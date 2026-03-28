@@ -140,34 +140,33 @@ let image = NSImage(size: CGSize(width: S, height: S), flipped: false) { _ in
 
     // ── Pectoral Fins ─────────────────────────────────────────────
     // macOS coords: Y↑（高いY＝画面上方）
-    // ボディ下寄りの側面（by - bh*0.15）から横向きに張り出す丸みのあるパドル型
-    let pFinAttachY  = by - bh * 0.15   // 付け根中心（ボディ下寄り）
-    let pFinTopY     = pFinAttachY + bh * 0.10  // 付け根の上縁
-    let pFinBotY     = pFinAttachY - bh * 0.12  // 付け根の下縁
-    let pFinExtendX  = bw * 0.27        // 横方向の張り出し幅
+    // ボディ下寄りの側面から斜め下45度に張り出すパドル型
+    let pFinAttachY  = by - bh * 0.12   // 付け根中心（ボディ下寄り）
+    let pFinTopY     = pFinAttachY + bh * 0.08  // 付け根の上縁
+    let pFinBotY     = pFinAttachY - bh * 0.09  // 付け根の下縁
+    let pFinExtendX  = bw * 0.24        // 横方向の張り出し幅
 
     for sign: CGFloat in [-1, 1] {
-        let attachX = bx + sign * bw * 0.42   // ボディ側面
+        let attachX = bx + sign * bw * 0.42
         let tipX    = attachX + sign * pFinExtendX
-        let tipMidY = pFinAttachY + bh * 0.01  // 先端はほぼ水平
+        let tipMidY = pFinAttachY - bh * 0.20   // 45度斜め下（Y↑なので小さい値=画面下）
 
         let finPath = CGMutablePath()
-        // 付け根上縁からスタート
         finPath.move(to: CGPoint(x: attachX, y: pFinTopY))
-        // 上縁カーブ → 先端上
+        // 外縁カーブ → 先端
         finPath.addQuadCurve(
-            to:      CGPoint(x: tipX, y: tipMidY + bh * 0.05),
-            control: CGPoint(x: attachX + sign * pFinExtendX * 0.55, y: pFinTopY + bh * 0.03)
+            to:      CGPoint(x: tipX, y: tipMidY + bh * 0.04),
+            control: CGPoint(x: attachX + sign * pFinExtendX * 0.42, y: pFinTopY - bh * 0.02)
         )
-        // 先端の丸み（上→下）
+        // 先端の丸み
         finPath.addQuadCurve(
-            to:      CGPoint(x: tipX, y: tipMidY - bh * 0.05),
-            control: CGPoint(x: tipX + sign * bw * 0.05, y: tipMidY)
+            to:      CGPoint(x: tipX, y: tipMidY - bh * 0.04),
+            control: CGPoint(x: tipX + sign * bw * 0.04, y: tipMidY)
         )
-        // 下縁カーブ → 付け根下縁
+        // 内縁カーブ → 付け根下縁
         finPath.addQuadCurve(
             to:      CGPoint(x: attachX, y: pFinBotY),
-            control: CGPoint(x: attachX + sign * pFinExtendX * 0.50, y: pFinBotY - bh * 0.02)
+            control: CGPoint(x: attachX + sign * pFinExtendX * 0.42, y: tipMidY - bh * 0.06)
         )
         finPath.closeSubpath()
 
@@ -179,7 +178,7 @@ let image = NSImage(size: CGSize(width: S, height: S), flipped: false) { _ in
         let pFinGrad = CGGradient(colorsSpace: space, colors: pFinColors, locations: pFinLocs)!
         ctx.drawLinearGradient(pFinGrad,
                                start: CGPoint(x: attachX, y: pFinTopY),
-                               end:   CGPoint(x: tipX,    y: pFinBotY),
+                               end:   CGPoint(x: tipX,    y: tipMidY),
                                options: [])
         ctx.restoreGState()
     }

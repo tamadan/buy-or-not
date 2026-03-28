@@ -125,8 +125,7 @@ private struct DolphinView: View {
             }
             .offset(y: size * 0.08)
 
-            // 胸ヒレ（左右）- ボディ下寄りの側面から横向きに張り出す
-            // SwiftUI: Y↓ なのでポジティブ y オフセット = 画面下方 = ボディ下部
+            // 胸ヒレ（左右）- ボディ下寄りから斜め下45度に張り出す
             ForEach([CGFloat(-1), CGFloat(1)], id: \.self) { sign in
                 PectoralFin(isLeft: sign < 0)
                     .fill(LinearGradient(
@@ -134,8 +133,8 @@ private struct DolphinView: View {
                         startPoint: .top,
                         endPoint: .bottom
                     ))
-                    .frame(width: size * 0.28, height: size * 0.20)
-                    .offset(x: sign * size * 0.56, y: size * 0.18)
+                    .frame(width: size * 0.26, height: size * 0.28)
+                    .offset(x: sign * size * 0.55, y: size * 0.10)
             }
 
             // スナウト（クチバシ）
@@ -181,28 +180,39 @@ private struct PectoralFin: Shape {
     func path(in rect: CGRect) -> Path {
         let w = rect.width
         let h = rect.height
-        // 付け根: ボディ側の端（isLeft なら右端 = x≈w、isRight なら左端 = x≈0）
-        let rootX: CGFloat = isLeft ? w * 0.85 : w * 0.15
-        let tipX:  CGFloat = isLeft ? 0         : w
 
         return Path { path in
-            // 付け根の上縁
-            path.move(to: CGPoint(x: rootX, y: h * 0.20))
-            // 上縁カーブ → 先端上
-            path.addQuadCurve(
-                to:      CGPoint(x: tipX + (rootX - tipX) * 0.12, y: h * 0.28),
-                control: CGPoint(x: rootX + (tipX - rootX) * 0.50, y: h * 0.05)
-            )
-            // 先端の丸み（上→下）
-            path.addQuadCurve(
-                to:      CGPoint(x: tipX + (rootX - tipX) * 0.12, y: h * 0.72),
-                control: CGPoint(x: tipX - (rootX - tipX) * 0.08, y: h * 0.50)
-            )
-            // 下縁カーブ → 付け根の下縁
-            path.addQuadCurve(
-                to:      CGPoint(x: rootX, y: h * 0.80),
-                control: CGPoint(x: rootX + (tipX - rootX) * 0.45, y: h * 0.95)
-            )
+            if isLeft {
+                // 付け根が右側、先端が左斜め下（45度）
+                path.move(to: CGPoint(x: w, y: h * 0.08))
+                path.addQuadCurve(
+                    to:      CGPoint(x: w * 0.10, y: h * 0.70),
+                    control: CGPoint(x: w * 0.42, y: h * 0.05)
+                )
+                path.addQuadCurve(
+                    to:      CGPoint(x: w * 0.15, y: h * 0.90),
+                    control: CGPoint(x: w * 0.02, y: h * 0.82)
+                )
+                path.addQuadCurve(
+                    to:      CGPoint(x: w, y: h * 0.92),
+                    control: CGPoint(x: w * 0.55, y: h * 1.02)
+                )
+            } else {
+                // 付け根が左側、先端が右斜め下（45度）
+                path.move(to: CGPoint(x: 0, y: h * 0.08))
+                path.addQuadCurve(
+                    to:      CGPoint(x: w * 0.90, y: h * 0.70),
+                    control: CGPoint(x: w * 0.58, y: h * 0.05)
+                )
+                path.addQuadCurve(
+                    to:      CGPoint(x: w * 0.85, y: h * 0.90),
+                    control: CGPoint(x: w * 0.98, y: h * 0.82)
+                )
+                path.addQuadCurve(
+                    to:      CGPoint(x: 0, y: h * 0.92),
+                    control: CGPoint(x: w * 0.45, y: h * 1.02)
+                )
+            }
             path.closeSubpath()
         }
     }
