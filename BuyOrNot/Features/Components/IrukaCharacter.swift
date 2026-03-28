@@ -137,15 +137,7 @@ private struct DolphinView: View {
                     .offset(x: sign * size * 0.55, y: size * 0.10)
             }
 
-            // スナウト（クチバシ）
-            Capsule()
-                .fill(LinearGradient(
-                    colors: [Color(hex: "8BCAE8"), Color(hex: "5BA3DC")],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ))
-                .frame(width: size * 0.22, height: size * 0.13)
-                .offset(y: size * 0.43)
+
         }
         .frame(width: size, height: size * 1.05)
     }

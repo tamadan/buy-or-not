@@ -280,25 +280,7 @@ let image = NSImage(size: CGSize(width: S, height: S), flipped: false) { _ in
     ctx.strokePath()
     ctx.restoreGState()
 
-    // ── Snout ─────────────────────────────────────────────────────
-    let snoutW = bw * 0.22
-    let snoutH = bh * 0.14
-    let snoutY = by - bh * 0.40
-    let snoutRect = CGRect(x: bx - snoutW/2, y: snoutY - snoutH/2,
-                           width: snoutW, height: snoutH)
-    ctx.saveGState()
-    let snoutPath = CGPath(roundedRect: snoutRect,
-                           cornerWidth: snoutH/2, cornerHeight: snoutH/2, transform: nil)
-    ctx.addPath(snoutPath)
-    ctx.clip()
-    let snoutColors = [hex("8BCAE8").cgColor, hex("5BA3DC").cgColor] as CFArray
-    let snoutLocs: [CGFloat] = [0, 1]
-    let snoutGrad = CGGradient(colorsSpace: space, colors: snoutColors, locations: snoutLocs)!
-    ctx.drawLinearGradient(snoutGrad,
-                           start: CGPoint(x: bx, y: snoutRect.maxY),
-                           end:   CGPoint(x: bx, y: snoutRect.minY),
-                           options: [])
-    ctx.restoreGState()
+
 
     // ── Speech bubble with "?" ────────────────────────────────────
     let bubbleR: CGFloat = S * 0.115
