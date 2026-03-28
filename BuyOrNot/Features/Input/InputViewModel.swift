@@ -16,6 +16,9 @@ final class InputViewModel: NSObject, ObservableObject {
 
     // MARK: - Camera Session
 
+    // AVFoundation の session/output は sessionQueue とメインアクターをまたいで使用する。
+    // AVCaptureSession のドキュメントでは設定・start/stop はスレッドセーフと定義されており、
+    // これらは let 定数で再代入がないためデータ競合は発生しない。
     nonisolated(unsafe) let session = AVCaptureSession()
     nonisolated(unsafe) private let metadataOutput = AVCaptureMetadataOutput()
     nonisolated(unsafe) private let photoOutput = AVCapturePhotoOutput()

@@ -11,11 +11,19 @@ final class TavilyService {
         async let specsResults = search(query: "\(productName) スペック 特徴 詳細")
         async let priceResults = search(query: "\(productName) 価格 定価 実勢価格")
 
-        let specs = (try? await specsResults) ?? []
-        let price = (try? await priceResults) ?? []
+        var specs: [String] = []
+        var price: [String] = []
 
-        // 重複を除いて結合（最大8件）
-        let combined = (specs + price).prefix(8)
+        do { specs = try await specsResults } catch {
+            print("⚠️ [TavilyService] specs search failed: \(error)")
+        }
+        do { price = try await priceResults } catch {
+            print("⚠️ [TavilyService] price search failed: \(error)")
+        }
+
+        // 重複排除して結合（最大4件）
+        var seen = Set<String>()
+        let combined = (specs + price).filter { seen.insert($0).inserted }.prefix(4)
         guard !combined.isEmpty else { throw TavilyError.noResults }
         return Array(combined)
     }

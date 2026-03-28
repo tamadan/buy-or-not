@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild -project BuyOrNot.xcodeproj -scheme BuyOrNot -destination 'platform=iOS Simulator,name=iPhone 16' -quiet build)",
+      "Read(//Applications/**)",
+      "Bash(xcode-select -p)",
+      "Bash(open /Users/izumiyouhei/project/myProject/buy-or-not/.claude/worktrees/ecstatic-perlman/BuyOrNot.xcodeproj)",
+      "Bash(sudo xcode-select:*)",
+      "Bash(xcodebuild -project BuyOrNot.xcodeproj -scheme BuyOrNot -destination 'platform=iOS Simulator,name=iPhone 16' build)",
+      "Read(//Users/izumiyouhei/project/myProject/buy-or-not/**)",
+      "Bash(xcodebuild -project BuyOrNot.xcodeproj -scheme BuyOrNot -destination 'platform=iOS Simulator,id=03BC11D9-8B16-40C6-9892-85A5ADE26C0D' build)"
+    ]
+  }
+}

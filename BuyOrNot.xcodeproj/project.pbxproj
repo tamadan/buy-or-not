@@ -10,7 +10,6 @@
 		A1000001 /* BuyOrNotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001 /* BuyOrNotApp.swift */; };
 		A1000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002 /* ContentView.swift */; };
 		A1000003 /* Product.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* Product.swift */; };
-		A1000004 /* ReviewData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* ReviewData.swift */; };
 		A1000005 /* Judgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005 /* Judgement.swift */; };
 		A1000006 /* ResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000006 /* ResultView.swift */; };
 		A1000007 /* ResultViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000007 /* ResultViewModel.swift */; };
@@ -32,7 +31,6 @@
 		B1000001 /* BuyOrNotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuyOrNotApp.swift; sourceTree = "<group>"; };
 		B1000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B1000003 /* Product.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Product.swift; sourceTree = "<group>"; };
-		B1000004 /* ReviewData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewData.swift; sourceTree = "<group>"; };
 		B1000005 /* Judgement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Judgement.swift; sourceTree = "<group>"; };
 		B1000006 /* ResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultView.swift; sourceTree = "<group>"; };
 		B1000007 /* ResultViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultViewModel.swift; sourceTree = "<group>"; };
@@ -126,7 +124,6 @@
 			isa = PBXGroup;
 			children = (
 				B1000003 /* Product.swift */,
-				B1000004 /* ReviewData.swift */,
 				B1000005 /* Judgement.swift */,
 			);
 			path = Models;
@@ -273,7 +270,6 @@
 				A1000001 /* BuyOrNotApp.swift in Sources */,
 				A1000002 /* ContentView.swift in Sources */,
 				A1000003 /* Product.swift in Sources */,
-				A1000004 /* ReviewData.swift in Sources */,
 				A1000005 /* Judgement.swift in Sources */,
 				A1000006 /* ResultView.swift in Sources */,
 				A1000007 /* ResultViewModel.swift in Sources */,
@@ -421,7 +417,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = 7964SZZU88;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "イルカソレ";
@@ -448,7 +444,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = 7964SZZU88;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "イルカソレ";

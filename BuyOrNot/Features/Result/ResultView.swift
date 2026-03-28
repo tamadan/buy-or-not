@@ -80,27 +80,18 @@ struct ResultView: View {
 // MARK: - Loading View
 
 private struct LoadingView: View {
-    @State private var dotCount = 0
-    @State private var loadingTimer: Timer?
-
     var body: some View {
-        VStack(spacing: 24) {
-            IrukaCharacter(
-                mood: .concerned,
-                comment: "調べています\(String(repeating: ".", count: dotCount))"
-            )
-            Text("イルカが考えています...")
-                .font(.subheadline)
-                .foregroundColor(Color(.secondaryLabel))
-        }
-        .onAppear {
-            loadingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-                dotCount = (dotCount + 1) % 4
+        TimelineView(.periodic(from: .now, by: 0.5)) { context in
+            let dotCount = Int(context.date.timeIntervalSinceReferenceDate * 2) % 4
+            VStack(spacing: 24) {
+                IrukaCharacter(
+                    mood: .concerned,
+                    comment: "調べています\(String(repeating: ".", count: dotCount))"
+                )
+                Text("イルカが考えています...")
+                    .font(.subheadline)
+                    .foregroundColor(Color(.secondaryLabel))
             }
-        }
-        .onDisappear {
-            loadingTimer?.invalidate()
-            loadingTimer = nil
         }
     }
 }
@@ -342,31 +333,37 @@ private struct BuyConfirmSheet: View {
                 .foregroundColor(Color(.secondaryLabel))
 
             VStack(spacing: 12) {
-                if product?.amazonURL != nil || product?.amazonASIN != nil {
-                    AffiliateLinkButton(
-                        title: "Amazonで買う",
-                        color: Color(hex: "FF9900"),
-                        icon: "cart.fill"
-                    ) {
-                        let urlString = product?.amazonURL
-                            ?? product?.amazonASIN.map { "https://www.amazon.co.jp/dp/\($0)" }
-                        if let urlString, let url = URL(string: urlString) {
-                            openURL(url)
+                AffiliateLinkButton(
+                    title: "Amazonで探す",
+                    color: Color(hex: "FF9900"),
+                    icon: "cart.fill"
+                ) {
+                    // アフィリエイト承認後は amazonURL に差し替え
+                    let urlString = product?.amazonURL
+                        ?? product?.amazonASIN.map { "https://www.amazon.co.jp/dp/\($0)" }
+                        ?? product.flatMap { p in
+                            let query = p.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                            return "https://www.amazon.co.jp/s?k=\(query)"
                         }
+                    if let urlString, let url = URL(string: urlString) {
+                        openURL(url)
                     }
                 }
 
-                if product?.rakutenURL != nil || product?.rakutenItemCode != nil {
-                    AffiliateLinkButton(
-                        title: "楽天で買う",
-                        color: Color(hex: "BF0000"),
-                        icon: "cart.fill"
-                    ) {
-                        let urlString = product?.rakutenURL
-                            ?? product?.rakutenItemCode.map { "https://item.rakuten.co.jp/\($0)/" }
-                        if let urlString, let url = URL(string: urlString) {
-                            openURL(url)
+                AffiliateLinkButton(
+                    title: "楽天で探す",
+                    color: Color(hex: "BF0000"),
+                    icon: "cart.fill"
+                ) {
+                    // アフィリエイト承認後は rakutenURL に差し替え
+                    let urlString = product?.rakutenURL
+                        ?? product?.rakutenItemCode.map { "https://item.rakuten.co.jp/\($0)/" }
+                        ?? product.flatMap { p in
+                            let query = p.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                            return "https://search.rakuten.co.jp/search/mall/\(query)/"
                         }
+                    if let urlString, let url = URL(string: urlString) {
+                        openURL(url)
                     }
                 }
             }

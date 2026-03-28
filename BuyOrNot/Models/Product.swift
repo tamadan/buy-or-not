@@ -32,4 +32,12 @@ struct Product: Identifiable, Codable, Equatable {
         self.amazonURL = amazonURL
         self.rakutenURL = rakutenURL
     }
+
+    func with(estimatedPrice: Int?) -> Product {
+        Product(
+            id: id, name: name, imageURL: imageURL, category: category,
+            estimatedPrice: estimatedPrice, amazonASIN: amazonASIN,
+            rakutenItemCode: rakutenItemCode, amazonURL: amazonURL, rakutenURL: rakutenURL
+        )
+    }
 }

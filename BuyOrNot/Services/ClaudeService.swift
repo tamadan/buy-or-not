@@ -300,6 +300,7 @@ final class ClaudeService {
             let icon = sp["icon"] as? String ?? "questionmark.circle"
             return StopPoint(icon: icon, title: title, detail: detail)
         }
+        guard !stopPoints.isEmpty else { throw ClaudeError.parseError }
 
         let productDescription = json["productDescription"] as? String
         let irukaComment = json["irukaComment"] as? String ?? "ほんとにいるか？"
