@@ -18,26 +18,26 @@ final class ConfirmViewModel: ObservableObject {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         isRetrying = true
+        defer { isRetrying = false }
         do {
             product = try await ClaudeService.shared.identifyProduct(name: trimmed)
             showRetrySheet = false
         } catch {
             errorMessage = error.localizedDescription
         }
-        isRetrying = false
     }
 
     func retryWithURL(_ urlString: String) async {
         let trimmed = urlString.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         isRetrying = true
+        defer { isRetrying = false }
         do {
             product = try await ClaudeService.shared.identifyProduct(url: trimmed)
             showRetrySheet = false
         } catch {
             errorMessage = error.localizedDescription
         }
-        isRetrying = false
     }
 
     func dismissError() {
