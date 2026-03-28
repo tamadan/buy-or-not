@@ -309,7 +309,6 @@ final class ClaudeService {
         // Claude は整数を Double で返すことがあるため両方対応
         let currentPrice: Int? = (json["currentPrice"] as? Int)
             ?? (json["currentPrice"] as? Double).map { Int($0) }
-        print("🐬 [ClaudeService] currentPrice raw=\(String(describing: json["currentPrice"])), parsed=\(String(describing: currentPrice))")
 
         let judgement = Judgement(
             productDescription: productDescription,

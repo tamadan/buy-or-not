@@ -150,7 +150,6 @@ extension InputViewModel: AVCaptureMetadataOutputObjectsDelegate {
     ) {
         guard let barcode = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
               let value = barcode.stringValue else { return }
-
         Task { @MainActor [weak self] in
             guard let self, self.detectedBarcode == nil, !self.isAnalyzing else { return }
             self.detectedBarcode = value
