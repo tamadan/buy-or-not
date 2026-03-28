@@ -125,6 +125,19 @@ private struct DolphinView: View {
             }
             .offset(y: size * 0.08)
 
+            // 胸ヒレ（左右）- ボディ下寄りの側面から横向きに張り出す
+            // SwiftUI: Y↓ なのでポジティブ y オフセット = 画面下方 = ボディ下部
+            ForEach([CGFloat(-1), CGFloat(1)], id: \.self) { sign in
+                PectoralFin(isLeft: sign < 0)
+                    .fill(LinearGradient(
+                        colors: [Color(hex: "5BA3DC"), Color(hex: "3578B5")],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ))
+                    .frame(width: size * 0.28, height: size * 0.20)
+                    .offset(x: sign * size * 0.56, y: size * 0.18)
+            }
+
             // スナウト（クチバシ）
             Capsule()
                 .fill(LinearGradient(
@@ -154,6 +167,41 @@ private struct DorsalFin: Shape {
             path.addQuadCurve(
                 to: CGPoint(x: w * 0.88, y: h * 0.9),
                 control: CGPoint(x: w * 0.82, y: h * 0.12)
+            )
+            path.closeSubpath()
+        }
+    }
+}
+
+// MARK: - Pectoral Fin Shape
+
+private struct PectoralFin: Shape {
+    let isLeft: Bool
+
+    func path(in rect: CGRect) -> Path {
+        let w = rect.width
+        let h = rect.height
+        // 付け根: ボディ側の端（isLeft なら右端 = x≈w、isRight なら左端 = x≈0）
+        let rootX: CGFloat = isLeft ? w * 0.85 : w * 0.15
+        let tipX:  CGFloat = isLeft ? 0         : w
+
+        return Path { path in
+            // 付け根の上縁
+            path.move(to: CGPoint(x: rootX, y: h * 0.20))
+            // 上縁カーブ → 先端上
+            path.addQuadCurve(
+                to:      CGPoint(x: tipX + (rootX - tipX) * 0.12, y: h * 0.28),
+                control: CGPoint(x: rootX + (tipX - rootX) * 0.50, y: h * 0.05)
+            )
+            // 先端の丸み（上→下）
+            path.addQuadCurve(
+                to:      CGPoint(x: tipX + (rootX - tipX) * 0.12, y: h * 0.72),
+                control: CGPoint(x: tipX - (rootX - tipX) * 0.08, y: h * 0.50)
+            )
+            // 下縁カーブ → 付け根の下縁
+            path.addQuadCurve(
+                to:      CGPoint(x: rootX, y: h * 0.80),
+                control: CGPoint(x: rootX + (tipX - rootX) * 0.45, y: h * 0.95)
             )
             path.closeSubpath()
         }
