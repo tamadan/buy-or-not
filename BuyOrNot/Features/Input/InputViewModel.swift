@@ -90,8 +90,21 @@ final class InputViewModel: NSObject, ObservableObject {
     }
 
     func stopSession() {
-        DispatchQueue.global(qos: .background).async { [weak self] in
+        // sessionQueue で直列化し restartSessionIfNeeded との競合を防ぐ
+        sessionQueue.async { [weak self] in
             self?.session.stopRunning()
+        }
+    }
+
+    func restartSessionIfNeeded() {
+        guard cameraPermission == .authorized else { return }
+        detectedBarcode = nil
+        identifiedProduct = nil
+        capturedImage = nil
+        isAnalyzing = false
+        sessionQueue.async { [weak self] in
+            guard let self, !self.session.isRunning else { return }
+            self.session.startRunning()
         }
     }
 
@@ -150,7 +163,6 @@ extension InputViewModel: AVCaptureMetadataOutputObjectsDelegate {
     ) {
         guard let barcode = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
               let value = barcode.stringValue else { return }
-
         Task { @MainActor [weak self] in
             guard let self, self.detectedBarcode == nil, !self.isAnalyzing else { return }
             self.detectedBarcode = value

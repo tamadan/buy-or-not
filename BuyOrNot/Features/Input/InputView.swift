@@ -48,6 +48,9 @@ struct InputView: View {
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
+        .onAppear {
+            viewModel.restartSessionIfNeeded()
+        }
         .onDisappear {
             viewModel.stopSession()
         }

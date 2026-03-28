@@ -3,6 +3,7 @@ import SwiftUI
 struct ConfirmView: View {
     @StateObject private var viewModel: ConfirmViewModel
     @State private var navigateToResult = false
+    @Environment(\.dismiss) private var dismiss
 
     init(product: Product, capturedImage: UIImage? = nil) {
         _viewModel = StateObject(wrappedValue: ConfirmViewModel(product: product, capturedImage: capturedImage))
@@ -91,8 +92,15 @@ struct ConfirmView: View {
             ResultView(product: viewModel.product)
         }
         .sheet(isPresented: $viewModel.showRetrySheet) {
-            RetrySheet(viewModel: viewModel)
-                .presentationDetents([.medium])
+            RetrySheet(
+                viewModel: viewModel,
+                showRetakeOption: viewModel.capturedImage != nil,
+                onRetakePhoto: {
+                    viewModel.showRetrySheet = false
+                    dismiss()
+                }
+            )
+            .presentationDetents([.medium])
         }
         .alert("エラー", isPresented: .init(
             get: { viewModel.errorMessage != nil },
@@ -163,6 +171,8 @@ private struct ProductConfirmCard: View {
 
 private struct RetrySheet: View {
     @ObservedObject var viewModel: ConfirmViewModel
+    let showRetakeOption: Bool
+    let onRetakePhoto: () -> Void
     @State private var mode: RetryMode = .none
     @State private var inputText = ""
     @FocusState private var isInputFocused: Bool
@@ -182,6 +192,15 @@ private struct RetrySheet: View {
 
             if mode == .none {
                 VStack(spacing: 12) {
+                    if showRetakeOption {
+                        RetryOptionButton(
+                            icon: "camera.fill",
+                            title: "写真を撮り直す",
+                            subtitle: "カメラ画面に戻って撮り直す",
+                            color: Color(hex: "27AE60")
+                        ) { onRetakePhoto() }
+                    }
+
                     RetryOptionButton(
                         icon: "magnifyingglass",
                         title: "別の商品名で検索",
