@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>イルカソレ - プライバシーポリシー</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      max-width: 680px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #1c1c1e;
+      line-height: 1.7;
+    }
+    h1 { font-size: 1.6rem; border-bottom: 2px solid #3A7BBF; padding-bottom: 8px; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; color: #3A7BBF; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; font-size: 0.9rem; }
+    th { background: #f0f6ff; }
+    a { color: #3A7BBF; }
+    .meta { color: #6e6e73; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>プライバシーポリシー</h1>
+  <p class="meta">アプリ名：イルカソレ ／ 開発者：泉陽平 ／ 最終更新日：2026年3月29日</p>
+
+  <h2>1. はじめに</h2>
+  <p>イルカソレ（以下「本アプリ」）は、商品のバーコードや写真をもとに「本当に買う必要があるか」を考える手助けをする個人開発のアプリです。本プライバシーポリシーでは、本アプリがどのような情報をどのように扱うかを説明します。</p>
+
+  <h2>2. 収集する情報</h2>
+  <p>本アプリは、アカウント登録を必要とせず、お客様の個人情報（氏名・住所・電話番号等）を収集・保存しません。</p>
+  <p>本アプリの機能上、以下の情報が処理されます：</p>
+  <table>
+    <tr><th>情報の種類</th><th>用途</th><th>保存</th></tr>
+    <tr><td>カメラで撮影した画像</td><td>商品の識別（AI解析）</td><td>しない</td></tr>
+    <tr><td>フォトライブラリから選択した画像</td><td>商品の識別（AI解析）</td><td>しない</td></tr>
+    <tr><td>バーコードの数値</td><td>商品の識別</td><td>しない</td></tr>
+    <tr><td>入力した商品名・URL</td><td>商品の検索・識別</td><td>しない</td></tr>
+  </table>
+  <p>これらの情報は、解析のために外部サービスへ送信されます（後述）。解析完了後、サーバー上に保存・記録されることはありません。</p>
+
+  <h2>3. 利用する外部サービス</h2>
+  <p>本アプリは以下の外部サービスのAPIを使用しています。各サービスのプライバシーポリシーも合わせてご確認ください。</p>
+
+  <h3>Anthropic (Claude API)</h3>
+  <ul>
+    <li><strong>用途：</strong>商品画像・商品名をもとにした商品識別、購入判断の分析</li>
+    <li><strong>送信するデータ：</strong>商品画像、商品名、検索結果テキスト</li>
+    <li><strong>プライバシーポリシー：</strong> <a href="https://www.anthropic.com/privacy">https://www.anthropic.com/privacy</a></li>
+  </ul>
+
+  <h3>Tavily</h3>
+  <ul>
+    <li><strong>用途：</strong>商品のスペック・価格情報のWeb検索</li>
+    <li><strong>送信するデータ：</strong>商品名（テキストのみ）</li>
+    <li><strong>プライバシーポリシー：</strong> <a href="https://tavily.com/privacy">https://tavily.com/privacy</a></li>
+  </ul>
+
+  <h2>4. カメラ・フォトライブラリの使用</h2>
+  <p>本アプリは以下の目的でカメラおよびフォトライブラリへのアクセスを求めます。</p>
+  <ul>
+    <li><strong>カメラ：</strong>商品のバーコードスキャン、および商品写真の撮影</li>
+    <li><strong>フォトライブラリ：</strong>既存の商品写真の選択</li>
+  </ul>
+  <p>撮影・選択した画像は本アプリのサーバーに保存されることはなく、AI解析のためにのみ外部APIへ送信されます。</p>
+
+  <h2>5. 情報の第三者提供</h2>
+  <p>本アプリは、上記「3. 利用する外部サービス」に記載した範囲を除き、お客様の情報を第三者に提供・販売・貸与することはありません。</p>
+
+  <h2>6. 未成年者の利用</h2>
+  <p>本アプリは年齢制限を設けていませんが、購入判断を支援するアプリの性質上、保護者の方と一緒にご利用いただくことを推奨します。</p>
+
+  <h2>7. プライバシーポリシーの変更</h2>
+  <p>本ポリシーは予告なく変更される場合があります。変更後のポリシーはこのページに掲載した時点で効力を生じます。</p>
+
+  <h2>8. お問い合わせ</h2>
+  <p>
+    <strong>開発者：</strong>泉陽平<br>
+    <strong>メールアドレス：</strong> <a href="mailto:izumi123y@gmail.com">izumi123y@gmail.com</a>
+  </p>
+</body>
+</html>
