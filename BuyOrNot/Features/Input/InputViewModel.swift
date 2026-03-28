@@ -10,6 +10,7 @@ final class InputViewModel: NSObject, ObservableObject {
     @Published var cameraPermission: AVAuthorizationStatus = .notDetermined
     @Published var detectedBarcode: String?
     @Published var isAnalyzing = false
+    @Published var isPhotoFallback = false  // バーコード失敗→写真フォールバック中
     @Published var identifiedProduct: Product?
     @Published var capturedImage: UIImage?
     @Published var errorMessage: String?
@@ -112,11 +113,13 @@ final class InputViewModel: NSObject, ObservableObject {
         Task {
             do {
                 identifiedProduct = try await ClaudeService.shared.identifyProduct(barcode: barcode)
+                isAnalyzing = false
             } catch {
-                errorMessage = error.localizedDescription
-                detectedBarcode = nil
+                // バーコードで特定できなかった場合、写真で自動フォールバック
+                isPhotoFallback = true
+                isAnalyzing = false
+                photoOutput.capturePhoto(with: AVCapturePhotoSettings(), delegate: self)
             }
-            isAnalyzing = false
         }
     }
 
@@ -130,6 +133,7 @@ final class InputViewModel: NSObject, ObservableObject {
             } catch {
                 errorMessage = error.localizedDescription
             }
+            isPhotoFallback = false
             isAnalyzing = false
         }
     }

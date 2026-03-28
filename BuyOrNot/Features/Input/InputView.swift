@@ -26,7 +26,7 @@ struct InputView: View {
 
             // 解析中オーバーレイ
             if viewModel.isAnalyzing {
-                AnalyzingOverlay(barcode: viewModel.detectedBarcode)
+                AnalyzingOverlay(barcode: viewModel.detectedBarcode, isPhotoFallback: viewModel.isPhotoFallback)
                     .transition(.opacity)
             }
         }
@@ -253,6 +253,7 @@ private struct ShutterButton: View {
 
 private struct AnalyzingOverlay: View {
     let barcode: String?
+    var isPhotoFallback: Bool = false
     @State private var dotCount = 0
     @State private var loadingTimer: Timer?
 
@@ -284,7 +285,15 @@ private struct AnalyzingOverlay: View {
                         .foregroundColor(.white)
                         .animation(nil, value: dotCount)
 
-                    if let barcode {
+                    if isPhotoFallback {
+                        HStack(spacing: 4) {
+                            Image(systemName: "camera.fill")
+                                .font(.caption)
+                            Text("バーコード不明 → 写真で解析中")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.white.opacity(0.55))
+                    } else if let barcode {
                         HStack(spacing: 4) {
                             Image(systemName: "barcode")
                                 .font(.caption)
