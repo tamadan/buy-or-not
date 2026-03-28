@@ -90,7 +90,8 @@ final class InputViewModel: NSObject, ObservableObject {
     }
 
     func stopSession() {
-        DispatchQueue.global(qos: .background).async { [weak self] in
+        // sessionQueue で直列化し restartSessionIfNeeded との競合を防ぐ
+        sessionQueue.async { [weak self] in
             self?.session.stopRunning()
         }
     }
@@ -99,6 +100,7 @@ final class InputViewModel: NSObject, ObservableObject {
         guard cameraPermission == .authorized else { return }
         detectedBarcode = nil
         identifiedProduct = nil
+        capturedImage = nil
         isAnalyzing = false
         sessionQueue.async { [weak self] in
             guard let self, !self.session.isRunning else { return }

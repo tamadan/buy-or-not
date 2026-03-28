@@ -92,10 +92,14 @@ struct ConfirmView: View {
             ResultView(product: viewModel.product)
         }
         .sheet(isPresented: $viewModel.showRetrySheet) {
-            RetrySheet(viewModel: viewModel, onRetakePhoto: {
-                viewModel.showRetrySheet = false
-                dismiss()
-            })
+            RetrySheet(
+                viewModel: viewModel,
+                showRetakeOption: viewModel.capturedImage != nil,
+                onRetakePhoto: {
+                    viewModel.showRetrySheet = false
+                    dismiss()
+                }
+            )
             .presentationDetents([.medium])
         }
         .alert("エラー", isPresented: .init(
@@ -167,6 +171,7 @@ private struct ProductConfirmCard: View {
 
 private struct RetrySheet: View {
     @ObservedObject var viewModel: ConfirmViewModel
+    let showRetakeOption: Bool
     let onRetakePhoto: () -> Void
     @State private var mode: RetryMode = .none
     @State private var inputText = ""
@@ -187,12 +192,14 @@ private struct RetrySheet: View {
 
             if mode == .none {
                 VStack(spacing: 12) {
-                    RetryOptionButton(
-                        icon: "camera.fill",
-                        title: "写真を撮り直す",
-                        subtitle: "カメラ画面に戻って撮り直す",
-                        color: Color(hex: "27AE60")
-                    ) { onRetakePhoto() }
+                    if showRetakeOption {
+                        RetryOptionButton(
+                            icon: "camera.fill",
+                            title: "写真を撮り直す",
+                            subtitle: "カメラ画面に戻って撮り直す",
+                            color: Color(hex: "27AE60")
+                        ) { onRetakePhoto() }
+                    }
 
                     RetryOptionButton(
                         icon: "magnifyingglass",
