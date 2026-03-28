@@ -138,6 +138,45 @@ let image = NSImage(size: CGSize(width: S, height: S), flipped: false) { _ in
                            options: [])
     ctx.restoreGState()
 
+    // ── Pectoral Fins ─────────────────────────────────────────────
+    // 正面向きなので左右に小さく張り出す swept-back フィン
+    let pFinRootY  = by - bh * 0.08   // ボディ側面の付け根Y
+    let pFinTipDX  = bw * 0.30        // 横方向の張り出し幅
+    let pFinTipDY  = bh * 0.20        // 先端の下がり
+
+    for sign: CGFloat in [-1, 1] {
+        let rootX  = bx + sign * bw * 0.43   // ボディ側面
+        let tipX   = bx + sign * (bw * 0.43 + pFinTipDX)
+        let tipY   = pFinRootY - pFinTipDY
+        let baseY  = pFinRootY + bh * 0.20   // 付け根の下端
+
+        let finPath = CGMutablePath()
+        finPath.move(to: CGPoint(x: rootX, y: pFinRootY))
+        // 先端へのアウトカーブ
+        finPath.addQuadCurve(
+            to:      CGPoint(x: tipX, y: tipY),
+            control: CGPoint(x: rootX + sign * pFinTipDX * 0.5, y: pFinRootY - pFinTipDY * 0.1)
+        )
+        // 先端から付け根下端へのインカーブ
+        finPath.addQuadCurve(
+            to:      CGPoint(x: rootX, y: baseY),
+            control: CGPoint(x: tipX - sign * pFinTipDX * 0.3, y: tipY + pFinTipDY * 0.9)
+        )
+        finPath.closeSubpath()
+
+        ctx.saveGState()
+        ctx.addPath(finPath)
+        ctx.clip()
+        let pFinColors = [hex("5BA3DC").cgColor, hex("3578B5").cgColor] as CFArray
+        let pFinLocs: [CGFloat] = [0, 1]
+        let pFinGrad = CGGradient(colorsSpace: space, colors: pFinColors, locations: pFinLocs)!
+        ctx.drawLinearGradient(pFinGrad,
+                               start: CGPoint(x: rootX, y: pFinRootY),
+                               end:   CGPoint(x: tipX,  y: tipY),
+                               options: [])
+        ctx.restoreGState()
+    }
+
     // ── Cheeks ────────────────────────────────────────────────────
     let cheekW = bw * 0.12
     let cheekH = bh * 0.08
