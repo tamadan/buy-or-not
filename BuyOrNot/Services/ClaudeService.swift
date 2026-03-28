@@ -258,7 +258,7 @@ final class ClaudeService {
         ## 出力形式（JSONのみ。説明不要）
         {
           "currentPrice": 検索結果から判明した日本での現在の販売価格（円・整数。不明な場合は null）,
-          "productDescription": 検索結果をもとにした商品の特徴・スペックまとめ（100字以内）,
+          "productDescription": 検索結果をもとにした商品説明。主なスペック・特徴・他製品との違いを含めて200字程度で詳しく書く,
           "stopPoints": [
             {
               "icon": "SF Symbol名",
