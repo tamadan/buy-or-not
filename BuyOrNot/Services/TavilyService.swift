@@ -21,11 +21,10 @@ final class TavilyService {
             print("⚠️ [TavilyService] price search failed: \(error)")
         }
 
-        // 重複排除して結合（最大4件）
-        var seen = Set<String>()
-        let combined = (specs + price).filter { seen.insert($0).inserted }.prefix(4)
+        // スペック2件・価格2件を確保して結合
+        let combined = Array(specs.prefix(2)) + Array(price.prefix(2))
         guard !combined.isEmpty else { throw TavilyError.noResults }
-        return Array(combined)
+        return combined
     }
 
     private func search(query: String) async throws -> [String] {
