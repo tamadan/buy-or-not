@@ -317,9 +317,20 @@ let image = NSImage(size: CGSize(width: S, height: S), flipped: false) { _ in
 
 // MARK: - Save PNG
 
-let outputDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+// #file でスクリプト自身のパスを取得し、実行ディレクトリに依存しないようにする
+let scriptDir = URL(fileURLWithPath: #file).deletingLastPathComponent()
+let outputDir = scriptDir
+    .deletingLastPathComponent()  // scripts/ の親 = プロジェクトルート
     .appendingPathComponent("BuyOrNot/Resources/Assets.xcassets/AppIcon.appiconset")
 let outputURL = outputDir.appendingPathComponent("AppIcon.png")
+
+// 出力ディレクトリが存在しない場合は作成（または明確なエラーで終了）
+do {
+    try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
+} catch {
+    print("❌ Output directory could not be created: \(outputDir.path)\n\(error)")
+    exit(1)
+}
 
 if let tiffData = image.tiffRepresentation,
    let bitmap = NSBitmapImageRep(data: tiffData),
