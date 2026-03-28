@@ -254,6 +254,7 @@ private struct ShutterButton: View {
 private struct AnalyzingOverlay: View {
     let barcode: String?
     @State private var dotCount = 0
+    @State private var loadingTimer: Timer?
 
     var body: some View {
         ZStack {
@@ -297,9 +298,13 @@ private struct AnalyzingOverlay: View {
             }
         }
         .onAppear {
-            Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
+            loadingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
                 dotCount = (dotCount + 1) % 4
             }
+        }
+        .onDisappear {
+            loadingTimer?.invalidate()
+            loadingTimer = nil
         }
     }
 }

@@ -227,7 +227,7 @@ private struct ActionCard: View {
 
 // MARK: - Text Input Sheet
 
-struct TextInputSheet: View {
+fileprivate struct TextInputSheet: View {
     let onSubmit: (String) -> Void
     @State private var text = ""
     @Environment(\.dismiss) private var dismiss

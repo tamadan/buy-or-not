@@ -1,4 +1,5 @@
 import SwiftUI
+import SafariServices
 
 struct ResultView: View {
     @StateObject private var viewModel: ResultViewModel
@@ -216,13 +217,14 @@ private struct NegativeReviewCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 // 星
+                let clampedRating = min(max(review.rating, 0), 5)
                 HStack(spacing: 2) {
-                    ForEach(0..<review.rating, id: \.self) { _ in
+                    ForEach(0..<clampedRating, id: \.self) { _ in
                         Image(systemName: "star.fill")
                             .font(.caption2)
                             .foregroundColor(Color(hex: "E74C3C"))
                     }
-                    ForEach(0..<(5 - review.rating), id: \.self) { _ in
+                    ForEach(0..<(5 - clampedRating), id: \.self) { _ in
                         Image(systemName: "star")
                             .font(.caption2)
                             .foregroundColor(Color(.systemGray4))
@@ -360,6 +362,7 @@ private struct BuyAnywayButton: View {
 private struct BuyConfirmSheet: View {
     let product: Product?
     let onDismiss: () -> Void
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(spacing: 24) {
@@ -382,7 +385,11 @@ private struct BuyConfirmSheet: View {
                         color: Color(hex: "FF9900"),
                         icon: "cart.fill"
                     ) {
-                        // TODO: アフィリンクを開く
+                        let urlString = product?.amazonURL
+                            ?? product?.amazonASIN.map { "https://www.amazon.co.jp/dp/\($0)" }
+                        if let urlString, let url = URL(string: urlString) {
+                            openURL(url)
+                        }
                     }
                 }
 
@@ -392,7 +399,11 @@ private struct BuyConfirmSheet: View {
                         color: Color(hex: "BF0000"),
                         icon: "cart.fill"
                     ) {
-                        // TODO: アフィリンクを開く
+                        let urlString = product?.rakutenURL
+                            ?? product?.rakutenItemCode.map { "https://item.rakuten.co.jp/\($0)/" }
+                        if let urlString, let url = URL(string: urlString) {
+                            openURL(url)
+                        }
                     }
                 }
             }

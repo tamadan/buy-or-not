@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct IrukaSoreApp: App {
+struct BuyOrNotApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

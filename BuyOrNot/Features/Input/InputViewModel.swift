@@ -166,8 +166,20 @@ extension InputViewModel: AVCapturePhotoCaptureDelegate {
         didFinishProcessingPhoto photo: AVCapturePhoto,
         error: Error?
     ) {
+        if let error {
+            Task { @MainActor [weak self] in
+                self?.errorMessage = error.localizedDescription
+            }
+            return
+        }
+
         guard let data = photo.fileDataRepresentation(),
-              let image = UIImage(data: data) else { return }
+              let image = UIImage(data: data) else {
+            Task { @MainActor [weak self] in
+                self?.errorMessage = "写真の取得に失敗しました"
+            }
+            return
+        }
 
         Task { @MainActor [weak self] in
             self?.capturedImage = image

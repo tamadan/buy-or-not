@@ -3,7 +3,7 @@ import UIKit
 
 // MARK: - API Key
 // Anthropic Console でAPIキーを取得: https://console.anthropic.com/
-// 環境変数 ANTHROPIC_API_KEY に設定するか、下記に直接記入してください
+// 環境変数 ANTHROPIC_API_KEY に設定するか、下記 "YOUR_ANTHROPIC_API_KEY" を実際のキーに書き換えてください
 private let anthropicAPIKey: String = {
     if let key = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !key.isEmpty {
         return key
@@ -15,7 +15,11 @@ private let anthropicAPIKey: String = {
 
 final class ClaudeService {
     static let shared = ClaudeService()
-    private init() {}
+    private init() {
+        if !useMock && (anthropicAPIKey == "YOUR_ANTHROPIC_API_KEY" || anthropicAPIKey.isEmpty) {
+            print("⚠️ [ClaudeService] ANTHROPIC_API_KEY が設定されていません。useMock = true にするか、有効なAPIキーを設定してください。")
+        }
+    }
 
     /// true にするとAPIを叩かずモックデータを返す
     private let useMock = true
@@ -232,6 +236,7 @@ final class ClaudeService {
     private func sendRequest(body: [String: Any]) async throws -> Product {
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
+        request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(anthropicAPIKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
@@ -239,8 +244,12 @@ final class ClaudeService {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            throw ClaudeError.apiError
+        guard let http = response as? HTTPURLResponse else {
+            throw ClaudeError.apiError(statusCode: nil, body: nil)
+        }
+        guard http.statusCode == 200 else {
+            let body = String(data: data, encoding: .utf8)
+            throw ClaudeError.apiError(statusCode: http.statusCode, body: body)
         }
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -273,14 +282,20 @@ final class ClaudeService {
 
     enum ClaudeError: LocalizedError {
         case invalidImage
-        case apiError
+        case apiError(statusCode: Int?, body: String?)
         case parseError
 
         var errorDescription: String? {
             switch self {
-            case .invalidImage: return "画像の処理に失敗しました"
-            case .apiError:     return "API通信エラーが発生しました"
-            case .parseError:   return "レスポンスの解析に失敗しました"
+            case .invalidImage:
+                return "画像の処理に失敗しました"
+            case .apiError(let statusCode, _):
+                if let statusCode {
+                    return "API通信エラーが発生しました（HTTP \(statusCode)）"
+                }
+                return "API通信エラーが発生しました"
+            case .parseError:
+                return "レスポンスの解析に失敗しました"
             }
         }
     }

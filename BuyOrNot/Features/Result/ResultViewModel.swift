@@ -5,16 +5,14 @@ final class ResultViewModel: ObservableObject {
     @Published var product: Product?
     @Published var judgement: Judgement?
     @Published var negativeReviews: [NegativeReview] = []
-    @Published var isLoading = false
-
     init(product: Product? = nil) {
         self.product = product
-        loadDummyData_evidenceBased()
+        loadDummyDataEvidenceBased()
     }
 
     // MARK: - パターン1: 実データ根拠（悪いレビューあり）
 
-    func loadDummyData_evidenceBased() {
+    func loadDummyDataEvidenceBased() {
         // カメラから商品が渡された場合はそちらを優先
         if product == nil {
             product = Product(
@@ -85,7 +83,7 @@ final class ResultViewModel: ObservableObject {
 
     // MARK: - パターン2: 論理こねくり回し（データは悪くないけど止める）
 
-    func loadDummyData_logicBased() {
+    func loadDummyDataLogicBased() {
         product = Product(
             name: "SONY WH-1000XM5 ワイヤレスノイズキャンセリングヘッドホン",
             category: "ヘッドホン",
