@@ -95,6 +95,17 @@ final class InputViewModel: NSObject, ObservableObject {
         }
     }
 
+    func restartSessionIfNeeded() {
+        guard cameraPermission == .authorized else { return }
+        detectedBarcode = nil
+        identifiedProduct = nil
+        isAnalyzing = false
+        sessionQueue.async { [weak self] in
+            guard let self, !self.session.isRunning else { return }
+            self.session.startRunning()
+        }
+    }
+
     // MARK: - Photo Capture
 
     func capturePhoto() {
