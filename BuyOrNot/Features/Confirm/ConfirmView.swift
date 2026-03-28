@@ -1,0 +1,312 @@
+import SwiftUI
+
+struct ConfirmView: View {
+    @StateObject private var viewModel: ConfirmViewModel
+    @State private var navigateToResult = false
+
+    init(product: Product, capturedImage: UIImage? = nil) {
+        _viewModel = StateObject(wrappedValue: ConfirmViewModel(product: product, capturedImage: capturedImage))
+    }
+
+    var body: some View {
+        ZStack {
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 28) {
+                    IrukaCharacter(mood: .concerned, comment: "この商品で合ってる？")
+                        .padding(.top, 8)
+
+                    // 商品確認カード
+                    ProductConfirmCard(
+                        product: viewModel.product,
+                        image: viewModel.capturedImage
+                    )
+
+                    // ボタン
+                    VStack(spacing: 12) {
+                        Button {
+                            navigateToResult = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("これで調べる")
+                                    .fontWeight(.bold)
+                            }
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .foregroundColor(.white)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color(hex: "4A90D9"))
+                            )
+                        }
+
+                        Button {
+                            viewModel.showRetrySheet = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.counterclockwise")
+                                Text("違う、やり直す")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, 8)
+                        }
+                    }
+                    .padding(.horizontal)
+
+                    Spacer(minLength: 40)
+                }
+                .padding(.vertical)
+            }
+
+            // やり直し中オーバーレイ
+            if viewModel.isRetrying {
+                Color.black.opacity(0.5).ignoresSafeArea()
+                VStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(hex: "69B4E8"), Color(hex: "4A90D9")],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 72, height: 72)
+                        ProgressView().tint(.white).scaleEffect(1.2)
+                    }
+                    Text("再検索中...")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                }
+            }
+        }
+        .navigationTitle("商品の確認")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(isPresented: $navigateToResult) {
+            ResultView(product: viewModel.product)
+        }
+        .sheet(isPresented: $viewModel.showRetrySheet) {
+            RetrySheet(viewModel: viewModel)
+                .presentationDetents([.medium])
+        }
+        .alert("エラー", isPresented: .init(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.dismissError() } }
+        )) {
+            Button("OK") { viewModel.dismissError() }
+        } message: {
+            Text(viewModel.errorMessage ?? "")
+        }
+    }
+}
+
+// MARK: - Product Confirm Card
+
+private struct ProductConfirmCard: View {
+    let product: Product
+    let image: UIImage?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // 撮影写真（あれば）
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 180)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
+            // 商品情報
+            VStack(alignment: .leading, spacing: 8) {
+                if let category = product.category {
+                    Text(category)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(Color(.secondaryLabel))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color(.systemGray6)))
+                }
+
+                Text(product.name)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(Color(.label))
+
+                if let price = product.estimatedPrice {
+                    Text("推定 ¥\(price.formatted())")
+                        .font(.headline)
+                        .foregroundColor(Color(hex: "E74C3C"))
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+        )
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Retry Sheet
+
+private struct RetrySheet: View {
+    @ObservedObject var viewModel: ConfirmViewModel
+    @State private var mode: RetryMode = .none
+    @State private var inputText = ""
+    @FocusState private var isInputFocused: Bool
+
+    enum RetryMode { case none, name, url }
+
+    var body: some View {
+        VStack(spacing: 24) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color(.systemGray4))
+                .frame(width: 36, height: 4)
+                .padding(.top, 8)
+
+            Text("どうやってやり直す？")
+                .font(.headline)
+                .foregroundColor(Color(.label))
+
+            if mode == .none {
+                VStack(spacing: 12) {
+                    RetryOptionButton(
+                        icon: "magnifyingglass",
+                        title: "別の商品名で検索",
+                        subtitle: "正しい商品名を入力する",
+                        color: Color(hex: "4A90D9")
+                    ) { mode = .name }
+
+                    RetryOptionButton(
+                        icon: "link",
+                        title: "URLを貼る",
+                        subtitle: "AmazonやRakutenのURLで特定する",
+                        color: Color(hex: "E67E22")
+                    ) { mode = .url }
+                }
+                .padding(.horizontal)
+            } else {
+                VStack(spacing: 16) {
+                    TextField(
+                        mode == .name ? "例: SONY WH-1000XM5" : "https://www.amazon.co.jp/dp/...",
+                        text: $inputText
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(mode == .url ? .URL : .default)
+                    .focused($isInputFocused)
+                    .padding(.horizontal)
+
+                    Button {
+                        Task {
+                            if mode == .name {
+                                await viewModel.retryWithName(inputText)
+                            } else {
+                                await viewModel.retryWithURL(inputText)
+                            }
+                        }
+                    } label: {
+                        Text("再検索する")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .foregroundColor(.white)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(hex: "4A90D9"))
+                            )
+                    }
+                    .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .padding(.horizontal)
+
+                    Button {
+                        mode = .none
+                        inputText = ""
+                        isInputFocused = false
+                    } label: {
+                        Text("戻る")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .onAppear { isInputFocused = true }
+            }
+
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Retry Option Button
+
+private struct RetryOptionButton: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(color.opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: icon)
+                        .font(.title3)
+                        .foregroundColor(color)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(Color(.label))
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(Color(.secondaryLabel))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(.secondarySystemGroupedBackground))
+                    .shadow(color: .black.opacity(0.04), radius: 4, y: 1)
+            )
+        }
+    }
+}
+
+// MARK: - Preview
+
+#Preview {
+    NavigationStack {
+        ConfirmView(
+            product: Product(
+                name: "SONY WH-1000XM5",
+                category: "ヘッドホン",
+                estimatedPrice: 44800
+            )
+        )
+    }
+}
