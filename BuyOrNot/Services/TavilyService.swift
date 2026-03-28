@@ -21,8 +21,8 @@ final class TavilyService {
             print("⚠️ [TavilyService] price search failed: \(error)")
         }
 
-        // スペック2件・価格2件を確保して結合
-        let combined = Array(specs.prefix(2)) + Array(price.prefix(2))
+        // スペック3件・価格3件を確保して結合
+        let combined = Array(specs.prefix(3)) + Array(price.prefix(3))
         guard !combined.isEmpty else { throw TavilyError.noResults }
         return combined
     }
