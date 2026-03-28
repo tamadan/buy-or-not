@@ -248,7 +248,7 @@ private struct RetrySheet: View {
                                     .fill(Color(hex: "4A90D9"))
                             )
                     }
-                    .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isRetrying)
                     .padding(.horizontal)
 
                     Button {
