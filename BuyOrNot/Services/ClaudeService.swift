@@ -306,7 +306,9 @@ final class ClaudeService {
         let irukaComment = json["irukaComment"] as? String ?? "ほんとにいるか？"
         let alternativeSuggestion = json["alternativeSuggestion"] as? String
         let waitSuggestion = json["waitSuggestion"] as? String
-        let currentPrice = json["currentPrice"] as? Int
+        // Claude は整数を Double で返すことがあるため両方対応
+        let currentPrice: Int? = (json["currentPrice"] as? Int)
+            ?? (json["currentPrice"] as? Double).map { Int($0) }
 
         let judgement = Judgement(
             productDescription: productDescription,
