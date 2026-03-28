@@ -4,25 +4,20 @@ import UIKit
 // MARK: - API Key
 // Anthropic Console でAPIキーを取得: https://console.anthropic.com/
 // 環境変数 ANTHROPIC_API_KEY に設定するか、下記 "YOUR_ANTHROPIC_API_KEY" を実際のキーに書き換えてください
-private let anthropicAPIKey: String = {
-    if let key = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !key.isEmpty {
-        return key
-    }
-    return "YOUR_ANTHROPIC_API_KEY"
-}()
+private let anthropicAPIKey: String = Secrets.anthropicAPIKey
 
 // MARK: - Claude Service
 
 final class ClaudeService {
     static let shared = ClaudeService()
     private init() {
-        if !useMock && (anthropicAPIKey == "YOUR_ANTHROPIC_API_KEY" || anthropicAPIKey.isEmpty) {
-            print("⚠️ [ClaudeService] ANTHROPIC_API_KEY が設定されていません。useMock = true にするか、有効なAPIキーを設定してください。")
+        if !useMock && anthropicAPIKey.isEmpty {
+            print("⚠️ [ClaudeService] Secrets.anthropicAPIKey が空です。Secrets.swift を確認してください。")
         }
     }
 
     /// true にするとAPIを叩かずモックデータを返す
-    private let useMock = true
+    private let useMock = false
 
     private let baseURL = URL(string: "https://api.anthropic.com/v1/messages")!
     private let model = "claude-haiku-4-5-20251001"
@@ -44,7 +39,8 @@ final class ClaudeService {
             try await Task.sleep(nanoseconds: 1_000_000_000)
             return mockProduct()
         }
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+        let resized = image.resizedForAPI(maxDimension: 1024)
+        guard let imageData = resized.jpegData(compressionQuality: 0.7) else {
             throw ClaudeError.invalidImage
         }
         let base64 = imageData.base64EncodedString()
@@ -231,9 +227,116 @@ final class ClaudeService {
         return try await sendRequest(body: body)
     }
 
+    // MARK: - 判定: 買わない理由を生成
+
+    func judgeProduct(product: Product, searchResults: [String]) async throws -> (judgement: Judgement, currentPrice: Int?) {
+        if useMock {
+            try await Task.sleep(nanoseconds: 1_500_000_000)
+            return (mockJudgement(product: product), nil)
+        }
+
+        let productInfo = """
+        商品名: \(product.name)
+        カテゴリ: \(product.category ?? "不明")
+        推定価格: \(product.estimatedPrice.map { "¥\($0)" } ?? "不明")
+        """
+
+        let searchContext = searchResults.isEmpty
+            ? "（検索結果なし）"
+            : searchResults.prefix(4).joined(separator: "\n\n")
+
+        let prompt = """
+        あなたは「本当にその買い物は必要か？」をユーザーに問いかけるアシスタントです。
+        商品を批判するのではなく、ユーザー自身が「本当に必要か」を考えるきっかけを与えてください。
+
+        ## 商品情報
+        \(productInfo)
+
+        ## 参考情報（Web検索結果：スペック・特徴・価格）
+        \(searchContext)
+
+        ## 出力形式（JSONのみ。説明不要）
+        {
+          "currentPrice": 検索結果から判明した日本での現在の販売価格（円・整数。不明な場合は null）,
+          "productDescription": 検索結果をもとにした商品の特徴・スペックまとめ（100字以内）,
+          "stopPoints": [
+            {
+              "icon": "SF Symbol名",
+              "title": "問いかけの見出し（20字以内）",
+              "detail": "具体的な説明（60字以内）"
+            }
+          ],
+          "irukaComment": "イルカの一言（30字以内、フレンドリーに）",
+          "alternativeSuggestion": "代替案（あれば。なければ null）",
+          "waitSuggestion": "「少し待ってみては？」系のアドバイス（あれば。なければ null）"
+        }
+
+        ## ルール
+        - currentPrice は検索結果に価格情報があれば必ず設定する
+        - stopPoints は3〜4個。検索結果から得たスペックや特徴を根拠にして具体的に書く
+          例：「重量680gで長時間装着すると首に負担」「ノイキャンは前世代より20%向上だが旧モデルで代用可」
+        - 商品や企業を批判しない。「ユーザー自身に問いかける」視点で書く
+        - irukaComment は「ほんとにいるか？」のようなキャラクターらしい口調
+        - icon は SF Symbols の名前（例: questionmark.circle, yensign.circle, clock.arrow.circlepath）
+        - 価格が高い場合はコスパの問いかけを必ず含める
+        - 抽象的な表現を避け、この商品固有の具体的な数値・特徴を使う
+        """
+
+        let body: [String: Any] = [
+            "model": model,
+            "max_tokens": 1024,
+            "messages": [["role": "user", "content": prompt]]
+        ]
+
+        let json = try await sendRequestRaw(body: body)
+
+        guard let stopPointsJSON = json["stopPoints"] as? [[String: Any]] else {
+            throw ClaudeError.parseError
+        }
+
+        let stopPoints = stopPointsJSON.compactMap { sp -> StopPoint? in
+            guard let title = sp["title"] as? String,
+                  let detail = sp["detail"] as? String else { return nil }
+            let icon = sp["icon"] as? String ?? "questionmark.circle"
+            return StopPoint(icon: icon, title: title, detail: detail)
+        }
+
+        let productDescription = json["productDescription"] as? String
+        let irukaComment = json["irukaComment"] as? String ?? "ほんとにいるか？"
+        let alternativeSuggestion = json["alternativeSuggestion"] as? String
+        let waitSuggestion = json["waitSuggestion"] as? String
+        let currentPrice = json["currentPrice"] as? Int
+
+        let judgement = Judgement(
+            productDescription: productDescription,
+            stopPoints: stopPoints,
+            irukaComment: irukaComment,
+            alternativeSuggestion: alternativeSuggestion,
+            waitSuggestion: waitSuggestion
+        )
+        return (judgement, currentPrice)
+    }
+
+    private func mockJudgement(product: Product) -> Judgement {
+        let price = product.estimatedPrice ?? 0
+        return Judgement(
+            productDescription: "\(product.name)のモック説明です。実際の検索結果から特徴・スペックが表示されます。",
+            stopPoints: [
+                StopPoint(icon: "questionmark.circle", title: "今すぐ必要？", detail: "壊れたわけでもないのに、今買う理由は何？"),
+                StopPoint(icon: "yensign.circle", title: "¥\(price)の価値ある？", detail: "月に何時間使う？1時間あたりのコストを計算してみて"),
+                StopPoint(icon: "clock.arrow.circlepath", title: "3日待てる？", detail: "3日後にまだ欲しければ、それは本物の欲求かも"),
+                StopPoint(icon: "arrow.down.circle", title: "代替手段ない？", detail: "今持っているもので代用できないか考えてみて"),
+            ],
+            irukaComment: "ほんとにいるか？\nちょっと待って考えてみ？",
+            alternativeSuggestion: nil,
+            waitSuggestion: "3日間カートに入れたまま待ってみよう。まだ欲しければ買えばいい。"
+        )
+    }
+
     // MARK: - 共通リクエスト処理
 
-    private func sendRequest(body: [String: Any]) async throws -> Product {
+    /// レスポンスのJSONブロックを [String: Any] で返す汎用メソッド
+    private func sendRequestRaw(body: [String: Any]) async throws -> [String: Any] {
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
         request.timeoutInterval = 30
@@ -249,6 +352,7 @@ final class ClaudeService {
         }
         guard http.statusCode == 200 else {
             let body = String(data: data, encoding: .utf8)
+            print("⚠️ [ClaudeService] HTTP \(http.statusCode): \(body ?? "no body")")
             throw ClaudeError.apiError(statusCode: http.statusCode, body: body)
         }
 
@@ -258,7 +362,6 @@ final class ClaudeService {
             throw ClaudeError.parseError
         }
 
-        // レスポンステキストからJSONブロックを抽出
         let raw = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let startIdx = raw.firstIndex(of: "{"),
               let endIdx = raw.lastIndex(of: "}") else {
@@ -267,15 +370,19 @@ final class ClaudeService {
         let jsonString = String(raw[startIdx...endIdx])
 
         guard let jsonData = jsonString.data(using: .utf8),
-              let productJSON = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+              let parsed = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
             throw ClaudeError.parseError
         }
 
-        let name = productJSON["name"] as? String ?? "不明な商品"
-        let category = productJSON["category"] as? String
-        let estimatedPrice = productJSON["estimatedPrice"] as? Int
+        return parsed
+    }
 
-        return Product(name: name, category: category, estimatedPrice: estimatedPrice)
+    private func sendRequest(body: [String: Any]) async throws -> Product {
+        let json = try await sendRequestRaw(body: body)
+        let name = json["name"] as? String ?? "不明な商品"
+        let category = json["category"] as? String
+        // 価格は Tavily 検索後に judgeProduct で取得するため、ここでは設定しない
+        return Product(name: name, category: category, estimatedPrice: nil)
     }
 
     // MARK: - エラー定義
@@ -289,11 +396,21 @@ final class ClaudeService {
             switch self {
             case .invalidImage:
                 return "画像の処理に失敗しました"
-            case .apiError(let statusCode, _):
-                if let statusCode {
-                    return "API通信エラーが発生しました（HTTP \(statusCode)）"
+            case .apiError(let statusCode, let body):
+                var msg = "API通信エラー"
+                if let statusCode { msg += "（HTTP \(statusCode)）" }
+                if let body {
+                    // Anthropic エラーの type/message を抽出して表示
+                    if let data = body.data(using: .utf8),
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let errorObj = json["error"] as? [String: Any],
+                       let message = errorObj["message"] as? String {
+                        msg += "\n\(message)"
+                    } else {
+                        msg += "\n\(body.prefix(200))"
+                    }
                 }
-                return "API通信エラーが発生しました"
+                return msg
             case .parseError:
                 return "レスポンスの解析に失敗しました"
             }

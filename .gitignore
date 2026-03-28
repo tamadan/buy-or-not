@@ -60,3 +60,6 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# API Keys - DO NOT COMMIT
+BuyOrNot/Config/Secrets.swift

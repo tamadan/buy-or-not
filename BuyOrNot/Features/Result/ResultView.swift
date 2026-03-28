@@ -1,5 +1,4 @@
 import SwiftUI
-import SafariServices
 
 struct ResultView: View {
     @StateObject private var viewModel: ResultViewModel
@@ -11,51 +10,51 @@ struct ResultView: View {
 
     var body: some View {
         ZStack {
-            // 背景
             Color(.systemGroupedBackground)
                 .ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 28) {
-                    // 商品名
-                    if let product = viewModel.product {
-                        ProductHeader(product: product)
+            if viewModel.isLoading {
+                LoadingView()
+            } else {
+                ScrollView {
+                    VStack(spacing: 28) {
+                        // 商品名
+                        if let product = viewModel.product {
+                            ProductHeader(product: product)
+                        }
+
+                        // 商品説明
+                        if let description = viewModel.judgement?.productDescription {
+                            ProductDescriptionCard(description: description)
+                        }
+
+                        // イルカ + メインコメント
+                        if let judgement = viewModel.judgement {
+                            IrukaCharacter(
+                                mood: .alarmed,
+                                comment: judgement.irukaComment
+                            )
+                            .padding(.top, 8)
+                        }
+
+                        // 買わない理由
+                        if let judgement = viewModel.judgement {
+                            StopPointsSection(stopPoints: judgement.stopPoints)
+                        }
+
+                        // 代替提案 & 待て提案
+                        if let judgement = viewModel.judgement {
+                            SuggestionsSection(judgement: judgement)
+                        }
+
+                        // 「それでも買う」ボタン
+                        BuyAnywayButton(showConfirm: $showBuyConfirm)
+                            .padding(.top, 8)
+
+                        Spacer(minLength: 40)
                     }
-
-                    // イルカ + メインコメント
-                    if let judgement = viewModel.judgement {
-                        IrukaCharacter(
-                            mood: judgement.stopReason == .evidenceBased ? .alarmed : .smug,
-                            comment: judgement.irukaComment
-                        )
-                        .padding(.top, 8)
-                    }
-
-                    // やめとけポイント
-                    if let judgement = viewModel.judgement {
-                        StopPointsSection(
-                            stopPoints: judgement.stopPoints,
-                            isEvidenceBased: judgement.stopReason == .evidenceBased
-                        )
-                    }
-
-                    // 悪いレビュー抜粋
-                    if !viewModel.negativeReviews.isEmpty {
-                        NegativeReviewsSection(reviews: viewModel.negativeReviews)
-                    }
-
-                    // 代替提案 & 待て提案
-                    if let judgement = viewModel.judgement {
-                        SuggestionsSection(judgement: judgement)
-                    }
-
-                    // 「それでも買う」ボタン
-                    BuyAnywayButton(showConfirm: $showBuyConfirm)
-                        .padding(.top, 8)
-
-                    Spacer(minLength: 40)
+                    .padding(.vertical)
                 }
-                .padding(.vertical)
             }
         }
         .navigationTitle("イルカソレ")
@@ -66,6 +65,42 @@ struct ResultView: View {
                 onDismiss: { showBuyConfirm = false }
             )
             .presentationDetents([.medium])
+        }
+        .alert("エラー", isPresented: .init(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.dismissError() } }
+        )) {
+            Button("OK") { viewModel.dismissError() }
+        } message: {
+            Text(viewModel.errorMessage ?? "")
+        }
+    }
+}
+
+// MARK: - Loading View
+
+private struct LoadingView: View {
+    @State private var dotCount = 0
+    @State private var loadingTimer: Timer?
+
+    var body: some View {
+        VStack(spacing: 24) {
+            IrukaCharacter(
+                mood: .concerned,
+                comment: "調べています\(String(repeating: ".", count: dotCount))"
+            )
+            Text("イルカが考えています...")
+                .font(.subheadline)
+                .foregroundColor(Color(.secondaryLabel))
+        }
+        .onAppear {
+            loadingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+                dotCount = (dotCount + 1) % 4
+            }
+        }
+        .onDisappear {
+            loadingTimer?.invalidate()
+            loadingTimer = nil
         }
     }
 }
@@ -104,41 +139,52 @@ private struct ProductHeader: View {
     }
 }
 
+// MARK: - Product Description Card
+
+private struct ProductDescriptionCard: View {
+    let description: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(Color(.secondaryLabel))
+                Text("商品について")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+
+            Text(description)
+                .font(.subheadline)
+                .foregroundColor(Color(.label))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+        .padding(.horizontal)
+    }
+}
+
 // MARK: - Stop Points Section
 
 private struct StopPointsSection: View {
     let stopPoints: [StopPoint]
-    let isEvidenceBased: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // セクションヘッダー
             HStack(spacing: 8) {
                 Image(systemName: "hand.raised.fill")
                     .foregroundColor(Color(hex: "E74C3C"))
-                Text("やめとけポイント")
+                Text("買わない理由")
                     .font(.headline)
-
-                Spacer()
-
-                // 根拠バッジ
-                Text(isEvidenceBased ? "実データあり" : "AI分析")
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(isEvidenceBased ? Color(hex: "E74C3C") : Color(hex: "F39C12"))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule().fill(
-                            isEvidenceBased
-                                ? Color(hex: "E74C3C").opacity(0.12)
-                                : Color(hex: "F39C12").opacity(0.12)
-                        )
-                    )
             }
             .padding(.horizontal)
 
-            // ポイントカード
             ForEach(stopPoints) { point in
                 StopPointCard(point: point)
             }
@@ -151,7 +197,6 @@ private struct StopPointCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            // アイコン
             Image(systemName: point.icon)
                 .font(.title3)
                 .foregroundColor(Color(hex: "E74C3C"))
@@ -163,17 +208,12 @@ private struct StopPointCard: View {
                 Text(point.title)
                     .font(.subheadline)
                     .fontWeight(.bold)
+                    .foregroundColor(Color(.label))
 
                 Text(point.detail)
                     .font(.caption)
                     .foregroundColor(Color(.secondaryLabel))
                     .lineSpacing(3)
-
-                if let source = point.source {
-                    Text("出典: \(source)")
-                        .font(.caption2)
-                        .foregroundColor(Color(hex: "3498DB"))
-                }
             }
 
             Spacer(minLength: 0)
@@ -183,81 +223,6 @@ private struct StopPointCard: View {
             RoundedRectangle(cornerRadius: 14)
                 .fill(Color(.secondarySystemGroupedBackground))
                 .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
-        )
-        .padding(.horizontal)
-    }
-}
-
-// MARK: - Negative Reviews Section
-
-private struct NegativeReviewsSection: View {
-    let reviews: [NegativeReview]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.bubble.fill")
-                    .foregroundColor(Color(hex: "E67E22"))
-                Text("実際のレビューより")
-                    .font(.headline)
-            }
-            .padding(.horizontal)
-
-            ForEach(reviews) { review in
-                NegativeReviewCard(review: review)
-            }
-        }
-    }
-}
-
-private struct NegativeReviewCard: View {
-    let review: NegativeReview
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                // 星
-                let clampedRating = min(max(review.rating, 0), 5)
-                HStack(spacing: 2) {
-                    ForEach(0..<clampedRating, id: \.self) { _ in
-                        Image(systemName: "star.fill")
-                            .font(.caption2)
-                            .foregroundColor(Color(hex: "E74C3C"))
-                    }
-                    ForEach(0..<(5 - clampedRating), id: \.self) { _ in
-                        Image(systemName: "star")
-                            .font(.caption2)
-                            .foregroundColor(Color(.systemGray4))
-                    }
-                }
-
-                Spacer()
-
-                Text(review.source == .amazon ? "Amazon" : "楽天")
-                    .font(.caption2)
-                    .foregroundColor(Color(.secondaryLabel))
-            }
-
-            if let title = review.title {
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-            }
-
-            Text("「\(review.excerpt)」")
-                .font(.caption)
-                .foregroundColor(Color(.secondaryLabel))
-                .italic()
-                .lineSpacing(3)
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemGroupedBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(hex: "E74C3C").opacity(0.15), lineWidth: 1)
         )
         .padding(.horizontal)
     }
@@ -366,7 +331,6 @@ private struct BuyConfirmSheet: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            // イルカの最後の抵抗
             IrukaCharacter(
                 mood: .pleading,
                 comment: "ほんとに買うの…？",
@@ -377,7 +341,6 @@ private struct BuyConfirmSheet: View {
                 .font(.subheadline)
                 .foregroundColor(Color(.secondaryLabel))
 
-            // アフィリンクボタン
             VStack(spacing: 12) {
                 if product?.amazonURL != nil || product?.amazonASIN != nil {
                     AffiliateLinkButton(
@@ -446,7 +409,7 @@ private struct AffiliateLinkButton: View {
 
 // MARK: - Preview
 
-#Preview("実データ根拠") {
+#Preview {
     NavigationStack {
         ResultView()
     }
