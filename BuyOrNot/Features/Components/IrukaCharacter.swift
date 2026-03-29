@@ -66,175 +66,86 @@ struct IrukaCharacter: View {
     }
 }
 
-// MARK: - Dolphin View
+// MARK: - Dolphin View（画像ベース + 表情オーバーレイ）
 
 private struct DolphinView: View {
     let mood: IrukaMood
     let size: CGFloat
 
+    // 顔パーツの位置定数（画像サイズに対する比率）
+    // ずれを感じたらここの値を調整してください
+    private var eyeSize:   CGFloat { size * 0.105 }  // 画像の白目円を完全に覆うため大きめに
+    private var leftEyeX:  CGFloat { size * 0.375 }
+    private var rightEyeX: CGFloat { size * 0.625 }
+    private var eyeY:      CGFloat { size * 0.445 }
+    private var browY:     CGFloat { size * 0.378 }
+    private var mouthY:    CGFloat { size * 0.638 }
+    private var cheekY:    CGFloat { size * 0.515 }
+
+    private var leftBrowAngle: Double {
+        switch mood {
+        case .concerned: return  12
+        case .alarmed:   return -12
+        case .smug:      return   4
+        case .pleading:  return  22
+        case .greeting:  return  -8
+        }
+    }
+    private var rightBrowAngle: Double {
+        switch mood {
+        case .concerned: return -12
+        case .alarmed:   return  12
+        case .smug:      return -18
+        case .pleading:  return -22
+        case .greeting:  return   8
+        }
+    }
+
     var body: some View {
         ZStack {
-            // 背びれ
-            DorsalFin()
-                .fill(LinearGradient(
-                    colors: [Color(hex: "5BA3DC"), Color(hex: "3578B5")],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ))
-                .frame(width: size * 0.26, height: size * 0.2)
-                .offset(y: -size * 0.46)
+            // ── 土台画像 ──────────────────────────────────────────
+            Image("iruka_base")
+                .resizable()
+                .scaledToFit()
+                .frame(width: size, height: size)
 
-            // メインボディ（楕円）
-            Ellipse()
-                .fill(LinearGradient(
-                    colors: [Color(hex: "6DB8EC"), Color(hex: "3A7BBF")],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
-                .frame(width: size * 0.88, height: size * 0.76)
-                .shadow(color: Color(hex: "3A7BBF").opacity(0.3), radius: 12, y: 6)
+            // ── 目（左）────────────────────────────────────────────
+            EyeView(mood: mood, size: eyeSize)
+                .position(x: leftEyeX, y: eyeY)
 
-            // お腹（明るい楕円）
-            Ellipse()
-                .fill(LinearGradient(
-                    colors: [Color(hex: "D8EEFA"), Color(hex: "A8D5F0")],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ))
-                .frame(width: size * 0.46, height: size * 0.48)
-                .offset(y: size * 0.11)
+            // ── 目（右）────────────────────────────────────────────
+            EyeView(mood: mood, size: eyeSize)
+                .position(x: rightEyeX, y: eyeY)
 
-            // 顔パーツ
-            VStack(spacing: size * 0.055) {
-                HStack(spacing: size * 0.18) {
-                    EyeWithBrow(mood: mood, size: size * 0.13, isLeft: true)
-                    EyeWithBrow(mood: mood, size: size * 0.13, isLeft: false)
-                }
-                MouthView(mood: mood, size: size * 0.28)
-            }
-            .offset(y: -size * 0.08)
-
-            // ほっぺ
-            HStack(spacing: size * 0.42) {
-                Ellipse()
-                    .fill(Color.pink.opacity(mood == .pleading ? 0.5 : 0.25))
-                    .frame(width: size * 0.12, height: size * 0.08)
-                Ellipse()
-                    .fill(Color.pink.opacity(mood == .pleading ? 0.5 : 0.25))
-                    .frame(width: size * 0.12, height: size * 0.08)
-            }
-            .offset(y: size * 0.08)
-
-            // 胸ヒレ（左右）- ボディ下寄りから斜め下45度に張り出す
-            ForEach([CGFloat(-1), CGFloat(1)], id: \.self) { sign in
-                PectoralFin(isLeft: sign < 0)
-                    .fill(LinearGradient(
-                        colors: [Color(hex: "5BA3DC"), Color(hex: "3578B5")],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ))
-                    .frame(width: size * 0.26, height: size * 0.28)
-                    .offset(x: sign * size * 0.55, y: size * 0.10)
-            }
-
-
-        }
-        .frame(width: size, height: size * 1.05)
-    }
-}
-
-// MARK: - Dorsal Fin Shape
-
-private struct DorsalFin: Shape {
-    func path(in rect: CGRect) -> Path {
-        Path { path in
-            let w = rect.width
-            let h = rect.height
-            path.move(to: CGPoint(x: w * 0.12, y: h))
-            path.addQuadCurve(
-                to: CGPoint(x: w * 0.52, y: 0),
-                control: CGPoint(x: w * 0.08, y: h * 0.2)
-            )
-            path.addQuadCurve(
-                to: CGPoint(x: w * 0.88, y: h * 0.9),
-                control: CGPoint(x: w * 0.82, y: h * 0.12)
-            )
-            path.closeSubpath()
-        }
-    }
-}
-
-// MARK: - Pectoral Fin Shape
-
-private struct PectoralFin: Shape {
-    let isLeft: Bool
-
-    func path(in rect: CGRect) -> Path {
-        let w = rect.width
-        let h = rect.height
-
-        return Path { path in
-            if isLeft {
-                // 付け根が右側、先端が左斜め下（45度）
-                path.move(to: CGPoint(x: w, y: h * 0.08))
-                path.addQuadCurve(
-                    to:      CGPoint(x: w * 0.10, y: h * 0.70),
-                    control: CGPoint(x: w * 0.42, y: h * 0.05)
-                )
-                path.addQuadCurve(
-                    to:      CGPoint(x: w * 0.15, y: h * 0.90),
-                    control: CGPoint(x: w * 0.02, y: h * 0.82)
-                )
-                path.addQuadCurve(
-                    to:      CGPoint(x: w, y: h * 0.92),
-                    control: CGPoint(x: w * 0.55, y: h * 1.02)
-                )
-            } else {
-                // 付け根が左側、先端が右斜め下（45度）
-                path.move(to: CGPoint(x: 0, y: h * 0.08))
-                path.addQuadCurve(
-                    to:      CGPoint(x: w * 0.90, y: h * 0.70),
-                    control: CGPoint(x: w * 0.58, y: h * 0.05)
-                )
-                path.addQuadCurve(
-                    to:      CGPoint(x: w * 0.85, y: h * 0.90),
-                    control: CGPoint(x: w * 0.98, y: h * 0.82)
-                )
-                path.addQuadCurve(
-                    to:      CGPoint(x: 0, y: h * 0.92),
-                    control: CGPoint(x: w * 0.45, y: h * 1.02)
-                )
-            }
-            path.closeSubpath()
-        }
-    }
-}
-
-// MARK: - Eye With Brow
-
-private struct EyeWithBrow: View {
-    let mood: IrukaMood
-    let size: CGFloat
-    let isLeft: Bool
-
-    private var browAngle: Double {
-        switch mood {
-        case .concerned: return isLeft ? 12 : -12    // ハの字（困り）
-        case .alarmed:   return isLeft ? -12 : 12    // 逆ハの字（驚き）
-        case .smug:      return isLeft ? 4 : -18     // 片眉上げ
-        case .pleading:  return isLeft ? 22 : -22    // 強ハの字（お願い）
-        case .greeting:  return isLeft ? -8 : 8      // ハの字（嬉しい）
-        }
-    }
-
-    var body: some View {
-        VStack(spacing: size * 0.22) {
+            // ── 眉（左）────────────────────────────────────────────
             Capsule()
                 .fill(Color(hex: "2C3E50"))
-                .frame(width: size * 1.1, height: size * 0.22)
-                .rotationEffect(.degrees(browAngle))
-            EyeView(mood: mood, size: size)
+                .frame(width: eyeSize * 1.1, height: eyeSize * 0.22)
+                .rotationEffect(.degrees(leftBrowAngle))
+                .position(x: leftEyeX, y: browY)
+
+            // ── 眉（右）────────────────────────────────────────────
+            Capsule()
+                .fill(Color(hex: "2C3E50"))
+                .frame(width: eyeSize * 1.1, height: eyeSize * 0.22)
+                .rotationEffect(.degrees(rightBrowAngle))
+                .position(x: rightEyeX, y: browY)
+
+            // ── ほっぺ ─────────────────────────────────────────────
+            Ellipse()
+                .fill(Color.pink.opacity(mood == .pleading ? 0.55 : 0.28))
+                .frame(width: size * 0.088, height: size * 0.058)
+                .position(x: size * 0.292, y: cheekY)
+            Ellipse()
+                .fill(Color.pink.opacity(mood == .pleading ? 0.55 : 0.28))
+                .frame(width: size * 0.088, height: size * 0.058)
+                .position(x: size * 0.708, y: cheekY)
+
+            // ── 口 ────────────────────────────────────────────────
+            MouthView(mood: mood, size: size * 0.20)
+                .position(x: size * 0.500, y: mouthY)
         }
+        .frame(width: size, height: size)
     }
 }
 
@@ -247,7 +158,6 @@ private struct EyeView: View {
     var body: some View {
         switch mood {
         case .concerned:
-            // 少し困り気味の丸目
             ZStack {
                 Circle().fill(.white).frame(width: size * 1.2)
                 Circle().fill(Color(hex: "2C3E50")).frame(width: size * 0.82)
@@ -256,7 +166,6 @@ private struct EyeView: View {
             }
 
         case .alarmed:
-            // 大きな驚き目（白目多め）
             ZStack {
                 Circle().fill(.white).frame(width: size * 1.55)
                 Circle().fill(Color(hex: "2C3E50")).frame(width: size * 0.75)
@@ -265,14 +174,12 @@ private struct EyeView: View {
             }
 
         case .smug:
-            // 半目（横長の眠そうな目）
             ZStack {
                 Capsule().fill(.white).frame(width: size * 1.3, height: size * 0.75)
                 Capsule().fill(Color(hex: "2C3E50")).frame(width: size * 0.75, height: size * 0.42)
             }
 
         case .pleading:
-            // うるうる目（大きめ瞳＋ハイライト2つ）
             ZStack {
                 Circle().fill(.white).frame(width: size * 1.5)
                 Circle().fill(Color(hex: "2C3E50")).frame(width: size * 1.1)
@@ -284,17 +191,20 @@ private struct EyeView: View {
             }
 
         case .greeting:
-            // ^^ 笑い目（アーチ型）
-            Path { path in
-                path.move(to: CGPoint(x: 0, y: size * 0.5))
-                path.addQuadCurve(
-                    to: CGPoint(x: size * 1.1, y: size * 0.5),
-                    control: CGPoint(x: size * 0.55, y: 0)
-                )
+            // ^^ 笑い目（アーチ型）— 白背景で画像の白目円を隠してからアーチを描く
+            ZStack {
+                Circle().fill(.white).frame(width: size * 1.5)
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: size * 0.5))
+                    path.addQuadCurve(
+                        to: CGPoint(x: size * 1.1, y: size * 0.5),
+                        control: CGPoint(x: size * 0.55, y: 0)
+                    )
+                }
+                .stroke(Color(hex: "2C3E50"),
+                        style: StrokeStyle(lineWidth: size * 0.22, lineCap: .round))
+                .frame(width: size * 1.1, height: size * 0.6)
             }
-            .stroke(Color(hex: "2C3E50"),
-                    style: StrokeStyle(lineWidth: size * 0.22, lineCap: .round))
-            .frame(width: size * 1.1, height: size * 0.6)
         }
     }
 }
@@ -308,7 +218,6 @@ private struct MouthView: View {
     var body: some View {
         switch mood {
         case .concerned:
-            // 緩やかなへの字
             Path { path in
                 path.move(to: CGPoint(x: 0, y: size * 0.18))
                 path.addQuadCurve(
@@ -320,13 +229,11 @@ private struct MouthView: View {
             .frame(width: size, height: size * 0.5)
 
         case .alarmed:
-            // O型口（びっくり）
             Ellipse()
                 .fill(Color(hex: "2C3E50"))
                 .frame(width: size * 0.3, height: size * 0.36)
 
         case .smug:
-            // 片側ニヤリ
             Path { path in
                 path.move(to: CGPoint(x: size * 0.1, y: size * 0.25))
                 path.addQuadCurve(
@@ -338,7 +245,6 @@ private struct MouthView: View {
             .frame(width: size * 0.85, height: size * 0.52)
 
         case .pleading:
-            // への字（困り口）
             Path { path in
                 path.move(to: CGPoint(x: size * 0.1, y: 0))
                 path.addQuadCurve(
@@ -350,7 +256,6 @@ private struct MouthView: View {
             .frame(width: size * 0.8, height: size * 0.42)
 
         case .greeting:
-            // 大きな笑顔（ドルフィンスマイル）
             Path { path in
                 path.move(to: CGPoint(x: 0, y: 0))
                 path.addQuadCurve(
