@@ -54,7 +54,7 @@ struct HomeView: View {
                             ActionCard(
                                 icon: "text.magnifyingglass",
                                 title: "商品名で調べる",
-                                subtitle: "商品名を入力して検索する",
+                                subtitle: "商品名やURLを入力して検索する",
                                 color: Color(hex: "9B59B6")
                             )
                         }
@@ -93,12 +93,16 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $showTextInput) {
-            TextInputSheet { name in
+            TextInputSheet { input in
                 showTextInput = false
                 Task {
                     isIdentifying = true
                     do {
-                        let product = try await ClaudeService.shared.identifyProduct(name: name)
+                        let product = if input.hasPrefix("http") {
+                            try await ClaudeService.shared.identifyProduct(url: input)
+                        } else {
+                            try await ClaudeService.shared.identifyProduct(name: input)
+                        }
                         identifiedProduct = product
                     } catch {
                         identifyError = error.localizedDescription
@@ -110,7 +114,10 @@ struct HomeView: View {
         }
         .navigationDestination(isPresented: $navigateToConfirm) {
             if let product = identifiedProduct {
-                ConfirmView(product: product)
+                ConfirmView(product: product, openCamera: {
+                    navigateToConfirm = false
+                    showCamera = true
+                })
             }
         }
         .onChange(of: identifiedProduct) { _, product in
@@ -239,14 +246,22 @@ fileprivate struct TextInputSheet: View {
                 .frame(width: 36, height: 4)
                 .padding(.top, 8)
 
-            Text("商品名を入力")
+            Text("商品名またはURLを入力")
                 .font(.headline)
 
-            TextField("例: SONY WH-1000XM5", text: $text)
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-                .onSubmit { submitIfValid() }
-                .padding(.horizontal)
+            VStack(spacing: 6) {
+                TextField("例: SONY WH-1000XM5 または https://...", text: $text)
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(text.hasPrefix("http") ? .URL : .default)
+                    .onSubmit { submitIfValid() }
+
+                Text("AmazonやRakutenなどのURLも使えます")
+                    .font(.caption)
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+            .padding(.horizontal)
 
             Button {
                 submitIfValid()

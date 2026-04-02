@@ -5,8 +5,11 @@ struct ConfirmView: View {
     @State private var navigateToResult = false
     @Environment(\.dismiss) private var dismiss
 
-    init(product: Product, capturedImage: UIImage? = nil) {
+    var openCamera: (() -> Void)? = nil
+
+    init(product: Product, capturedImage: UIImage? = nil, openCamera: (() -> Void)? = nil) {
         _viewModel = StateObject(wrappedValue: ConfirmViewModel(product: product, capturedImage: capturedImage))
+        self.openCamera = openCamera
     }
 
     var body: some View {
@@ -94,10 +97,17 @@ struct ConfirmView: View {
         .sheet(isPresented: $viewModel.showRetrySheet) {
             RetrySheet(
                 viewModel: viewModel,
-                showRetakeOption: viewModel.capturedImage != nil,
+                showRetakeOption: true,
                 onRetakePhoto: {
                     viewModel.showRetrySheet = false
-                    dismiss()
+                    if let openCamera {
+                        // テキスト入力フロー: dismissしてからカメラを開く
+                        dismiss()
+                        openCamera()
+                    } else {
+                        // カメラフロー: InputViewに戻る
+                        dismiss()
+                    }
                 }
             )
             .presentationDetents([.medium])
@@ -173,11 +183,9 @@ private struct RetrySheet: View {
     @ObservedObject var viewModel: ConfirmViewModel
     let showRetakeOption: Bool
     let onRetakePhoto: () -> Void
-    @State private var mode: RetryMode = .none
+    @State private var showInput = false
     @State private var inputText = ""
     @FocusState private var isInputFocused: Bool
-
-    enum RetryMode { case none, name, url }
 
     var body: some View {
         VStack(spacing: 24) {
@@ -190,51 +198,46 @@ private struct RetrySheet: View {
                 .font(.headline)
                 .foregroundColor(Color(.label))
 
-            if mode == .none {
+            if !showInput {
                 VStack(spacing: 12) {
-                    if showRetakeOption {
-                        RetryOptionButton(
-                            icon: "camera.fill",
-                            title: "写真を撮り直す",
-                            subtitle: "カメラ画面に戻って撮り直す",
-                            color: Color(hex: "27AE60")
-                        ) { onRetakePhoto() }
-                    }
+                    RetryOptionButton(
+                        icon: "camera.fill",
+                        title: "写真を撮り直す",
+                        subtitle: "カメラ画面に戻って撮り直す",
+                        color: Color(hex: "27AE60")
+                    ) { onRetakePhoto() }
 
                     RetryOptionButton(
                         icon: "magnifyingglass",
-                        title: "別の商品名で検索",
-                        subtitle: "正しい商品名を入力する",
+                        title: "商品名またはURLで検索",
+                        subtitle: "商品名かAmazon・RakutenのURLを入力",
                         color: Color(hex: "4A90D9")
-                    ) { mode = .name }
-
-                    RetryOptionButton(
-                        icon: "link",
-                        title: "URLを貼る",
-                        subtitle: "AmazonやRakutenのURLで特定する",
-                        color: Color(hex: "E67E22")
-                    ) { mode = .url }
+                    ) { showInput = true }
                 }
                 .padding(.horizontal)
             } else {
+                let trimmed = inputText.trimmingCharacters(in: .whitespaces)
                 VStack(spacing: 16) {
-                    TextField(
-                        mode == .name ? "例: SONY WH-1000XM5" : "https://www.amazon.co.jp/dp/...",
-                        text: $inputText
-                    )
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(mode == .url ? .URL : .default)
-                    .focused($isInputFocused)
+                    VStack(spacing: 6) {
+                        TextField("例: SONY WH-1000XM5 または https://...", text: $inputText)
+                            .textFieldStyle(.roundedBorder)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(trimmed.hasPrefix("http") ? .URL : .default)
+                            .focused($isInputFocused)
+
+                        Text("URLも使えます（Amazon、Rakutenなど）")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                    }
                     .padding(.horizontal)
 
                     Button {
                         Task {
-                            if mode == .name {
-                                await viewModel.retryWithName(inputText)
+                            if trimmed.hasPrefix("http") {
+                                await viewModel.retryWithURL(trimmed)
                             } else {
-                                await viewModel.retryWithURL(inputText)
+                                await viewModel.retryWithName(trimmed)
                             }
                         }
                     } label: {
@@ -248,11 +251,19 @@ private struct RetrySheet: View {
                                     .fill(Color(hex: "4A90D9"))
                             )
                     }
-                    .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isRetrying)
+                    .disabled(trimmed.isEmpty || viewModel.isRetrying)
+                    .padding(.horizontal)
+
+                    RetryOptionButton(
+                        icon: "camera.fill",
+                        title: "写真を撮り直す",
+                        subtitle: "カメラ画面に戻って撮り直す",
+                        color: Color(hex: "27AE60")
+                    ) { onRetakePhoto() }
                     .padding(.horizontal)
 
                     Button {
-                        mode = .none
+                        showInput = false
                         inputText = ""
                         isInputFocused = false
                     } label: {
