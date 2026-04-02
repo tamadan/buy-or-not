@@ -216,13 +216,14 @@ private struct RetrySheet: View {
                 }
                 .padding(.horizontal)
             } else {
+                let trimmed = inputText.trimmingCharacters(in: .whitespaces)
                 VStack(spacing: 16) {
                     VStack(spacing: 6) {
                         TextField("例: SONY WH-1000XM5 または https://...", text: $inputText)
                             .textFieldStyle(.roundedBorder)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
-                            .keyboardType(inputText.hasPrefix("http") ? .URL : .default)
+                            .keyboardType(trimmed.hasPrefix("http") ? .URL : .default)
                             .focused($isInputFocused)
 
                         Text("URLも使えます（Amazon、Rakutenなど）")
@@ -233,10 +234,10 @@ private struct RetrySheet: View {
 
                     Button {
                         Task {
-                            if inputText.hasPrefix("http") {
-                                await viewModel.retryWithURL(inputText)
+                            if trimmed.hasPrefix("http") {
+                                await viewModel.retryWithURL(trimmed)
                             } else {
-                                await viewModel.retryWithName(inputText)
+                                await viewModel.retryWithName(trimmed)
                             }
                         }
                     } label: {
@@ -250,7 +251,15 @@ private struct RetrySheet: View {
                                     .fill(Color(hex: "4A90D9"))
                             )
                     }
-                    .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || viewModel.isRetrying)
+                    .disabled(trimmed.isEmpty || viewModel.isRetrying)
+                    .padding(.horizontal)
+
+                    RetryOptionButton(
+                        icon: "camera.fill",
+                        title: "写真を撮り直す",
+                        subtitle: "カメラ画面に戻って撮り直す",
+                        color: Color(hex: "27AE60")
+                    ) { onRetakePhoto() }
                     .padding(.horizontal)
 
                     Button {
