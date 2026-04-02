@@ -146,8 +146,11 @@ extension AdManager: FullScreenContentDelegate {
                         didFailToPresentFullScreenContentWithError error: Error) {
         Task { @MainActor in
             print("AdManager: 広告の表示に失敗しました: \(error.localizedDescription)")
+            self.interstitial = nil
+            self.isAdReady = false
             self.adDismissedCompletion?()
             self.adDismissedCompletion = nil
+            await self.loadAd()
         }
     }
 }

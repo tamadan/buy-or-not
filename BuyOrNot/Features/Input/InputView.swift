@@ -350,6 +350,7 @@ private struct PhotoPicker: View {
     @State private var selectedID: String? = nil
     @State private var isLoading = false
     @State private var showPermissionAlert = false
+    @State private var showImageLoadError = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
     private let imageManager = PHCachingImageManager()
@@ -402,8 +403,13 @@ private struct PhotoPicker: View {
                             guard !isDegraded else { return }
                             DispatchQueue.main.async {
                                 isLoading = false
-                                if let image { onPick(image) }
-                                dismiss()
+                                if let image {
+                                    onPick(image)
+                                    dismiss()
+                                } else {
+                                    // 画像の読み込みに失敗した場合はエラー表示（dismiss しない）
+                                    showImageLoadError = true
+                                }
                             }
                         }
                     }
@@ -417,6 +423,11 @@ private struct PhotoPicker: View {
                     Color.black.opacity(0.3).ignoresSafeArea()
                     ProgressView().tint(.white)
                 }
+            }
+            .alert("写真の読み込みに失敗しました", isPresented: $showImageLoadError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("別の写真を選んでもう一度お試しください")
             }
             .alert("写真へのアクセスが必要です", isPresented: $showPermissionAlert) {
                 Button("設定を開く") {
