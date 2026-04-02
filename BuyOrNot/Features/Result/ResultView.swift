@@ -3,9 +3,13 @@ import SwiftUI
 struct ResultView: View {
     @StateObject private var viewModel: ResultViewModel
     @State private var showBuyConfirm = false
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
+    let adWasShown: Bool
 
-    init(product: Product? = nil) {
+    init(product: Product? = nil, adWasShown: Bool = false) {
         _viewModel = StateObject(wrappedValue: ResultViewModel(product: product))
+        self.adWasShown = adWasShown
     }
 
     var body: some View {
@@ -14,7 +18,7 @@ struct ResultView: View {
                 .ignoresSafeArea()
 
             if viewModel.isLoading {
-                LoadingView()
+                LoadingView(showAdMessage: adWasShown)
             } else {
                 ScrollView {
                     VStack(spacing: 28) {
@@ -47,9 +51,31 @@ struct ResultView: View {
                             SuggestionsSection(judgement: judgement)
                         }
 
+                        // 「買うのをやめる」ボタン
+                        Button {
+                            navigationCoordinator.didStopBuying = true
+                            navigationCoordinator.shouldDismissToRoot = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "xmark.circle.fill")
+                                Text("買うのをやめる")
+                                    .fontWeight(.bold)
+                            }
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .foregroundColor(.white)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color(hex: "2ECC71"))
+                            )
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
                         // 「それでも買う」ボタン
                         BuyAnywayButton(showConfirm: $showBuyConfirm)
-                            .padding(.top, 8)
+                            .padding(.top, 4)
 
                         Spacer(minLength: 40)
                     }
@@ -80,6 +106,8 @@ struct ResultView: View {
 // MARK: - Loading View
 
 private struct LoadingView: View {
+    let showAdMessage: Bool
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
             let dotCount = Int(context.date.timeIntervalSinceReferenceDate * 2) % 4
@@ -91,6 +119,18 @@ private struct LoadingView: View {
                 Text("イルカが考えています...")
                     .font(.subheadline)
                     .foregroundColor(Color(.secondaryLabel))
+
+                if showAdMessage {
+                    HStack(spacing: 6) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(Color(hex: "4A90D9"))
+                        Text("広告なしで調べられるのは1日1回までだよ")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                    }
+                    .padding(.horizontal, 24)
+                    .multilineTextAlignment(.center)
+                }
             }
         }
     }

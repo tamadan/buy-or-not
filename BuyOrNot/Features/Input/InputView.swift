@@ -1,6 +1,6 @@
 import SwiftUI
 import AVFoundation
-import PhotosUI
+import Photos
 
 struct InputView: View {
     @StateObject private var viewModel = InputViewModel()
@@ -165,7 +165,6 @@ private struct CameraOverlay: View {
                 viewModel.capturedImage = image
                 viewModel.analyzePhoto(image)
             }
-            .ignoresSafeArea()
         }
     }
 }
@@ -342,37 +341,160 @@ private struct CameraPermissionView: View {
     }
 }
 
-// MARK: - Photo Picker
+// MARK: - Photo Picker（カスタムグリッド + 選択確認ボタン）
 
-private struct PhotoPicker: UIViewControllerRepresentable {
+private struct PhotoPicker: View {
     let onPick: (UIImage) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var assets: [PHAsset] = []
+    @State private var selectedID: String? = nil
+    @State private var isLoading = false
 
-    func makeUIViewController(context: Context) -> PHPickerViewController {
-        var config = PHPickerConfiguration()
-        config.selectionLimit = 1
-        config.filter = .images
-        let picker = PHPickerViewController(configuration: config)
-        picker.delegate = context.coordinator
-        return picker
-    }
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
+    private let imageManager = PHCachingImageManager()
 
-    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
-
-    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
-        let onPick: (UIImage) -> Void
-        init(onPick: @escaping (UIImage) -> Void) { self.onPick = onPick }
-
-        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            picker.dismiss(animated: true)
-            guard let provider = results.first?.itemProvider,
-                  provider.canLoadObject(ofClass: UIImage.self) else { return }
-            provider.loadObject(ofClass: UIImage.self) { [weak self] object, _ in
-                guard let image = object as? UIImage else { return }
-                DispatchQueue.main.async { self?.onPick(image) }
+    var body: some View {
+        NavigationStack {
+            Group {
+                if assets.isEmpty {
+                    ProgressView("読み込み中...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 2) {
+                            ForEach(assets, id: \.localIdentifier) { asset in
+                                PhotoCell(
+                                    asset: asset,
+                                    isSelected: selectedID == asset.localIdentifier,
+                                    imageManager: imageManager
+                                )
+                                .onTapGesture {
+                                    selectedID = asset.localIdentifier
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("写真を選択")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("選択") {
+                        guard let id = selectedID,
+                              let asset = assets.first(where: { $0.localIdentifier == id }) else { return }
+                        isLoading = true
+                        let options = PHImageRequestOptions()
+                        options.deliveryMode = .highQualityFormat
+                        options.isNetworkAccessAllowed = true
+                        imageManager.requestImage(
+                            for: asset,
+                            targetSize: PHImageManagerMaximumSize,
+                            contentMode: .aspectFit,
+                            options: options
+                        ) { image, info in
+                            // 低画質の中間コールバックはスキップ
+                            let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                            guard !isDegraded else { return }
+                            DispatchQueue.main.async {
+                                isLoading = false
+                                if let image { onPick(image) }
+                                dismiss()
+                            }
+                        }
+                    }
+                    .disabled(selectedID == nil || isLoading)
+                    .fontWeight(.bold)
+                }
+            }
+            .onAppear { loadAssets() }
+            .overlay {
+                if isLoading {
+                    Color.black.opacity(0.3).ignoresSafeArea()
+                    ProgressView().tint(.white)
+                }
             }
         }
+    }
+
+    private func loadAssets() {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        switch status {
+        case .authorized, .limited:
+            fetchAssets()
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { _ in
+                DispatchQueue.main.async { fetchAssets() }
+            }
+        default:
+            break // denied/restricted はアラート等で対応
+        }
+    }
+
+    private func fetchAssets() {
+        let options = PHFetchOptions()
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        let results = PHAsset.fetchAssets(with: .image, options: options)
+        var loaded: [PHAsset] = []
+        results.enumerateObjects { asset, _, _ in loaded.append(asset) }
+        assets = loaded
+    }
+}
+
+private struct PhotoCell: View {
+    let asset: PHAsset
+    let isSelected: Bool
+    let imageManager: PHCachingImageManager
+    @State private var thumbnail: UIImage?
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    if let thumb = thumbnail {
+                        Image(uiImage: thumb)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Color(.systemGray5)
+                    }
+                }
+                .frame(width: geo.size.width, height: geo.size.width)
+                .clipped()
+
+                // チェックマーク
+                if isSelected {
+                    ZStack {
+                        Circle()
+                            .fill(Color(hex: "4A90D9"))
+                            .frame(width: 26, height: 26)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .padding(5)
+                }
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 2)
+                    .stroke(Color(hex: "4A90D9"), lineWidth: isSelected ? 3 : 0)
+            )
+            .onAppear {
+                let size = CGSize(width: geo.size.width * 2, height: geo.size.width * 2)
+                imageManager.requestImage(
+                    for: asset,
+                    targetSize: size,
+                    contentMode: .aspectFill,
+                    options: nil
+                ) { image, _ in
+                    DispatchQueue.main.async { thumbnail = image }
+                }
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
     }
 }
 
