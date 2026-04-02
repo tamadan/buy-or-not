@@ -33,17 +33,19 @@ struct ConfirmView: View {
                     // ボタン
                     VStack(spacing: 12) {
                         Button {
-                            // shouldShowAdを先にチェックしてからincrementする
-                            // （1回目は無料、2回目以降に広告表示）
+                            // 日付リセットを先に実行してから shouldShowAd を評価
+                            AdManager.shared.ensureDailyReset()
                             if AdManager.shared.shouldShowAd {
-                                AdManager.shared.incrementCount()
                                 isShowingAd = true
                                 AdManager.shared.showAdIfNeeded {
+                                    // 広告表示成功後にのみカウントを増やす
+                                    AdManager.shared.incrementCount()
                                     isShowingAd = false
                                     adWasShown = true
                                     navigateToResult = true
                                 }
                             } else {
+                                // 広告不要時は即カウントアップして遷移
                                 AdManager.shared.incrementCount()
                                 adWasShown = false
                                 navigateToResult = true

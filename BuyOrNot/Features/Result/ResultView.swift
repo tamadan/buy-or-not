@@ -3,7 +3,6 @@ import SwiftUI
 struct ResultView: View {
     @StateObject private var viewModel: ResultViewModel
     @State private var showBuyConfirm = false
-    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
     let adWasShown: Bool
 
@@ -450,4 +449,5 @@ private struct AffiliateLinkButton: View {
     NavigationStack {
         ResultView()
     }
+    .environmentObject(NavigationCoordinator())
 }

@@ -31,6 +31,7 @@ final class AdManager: NSObject, ObservableObject {
 
     private var interstitial: InterstitialAd?
     private var adDismissedCompletion: (() -> Void)?
+    private var isInitialized = false
 
     @Published private(set) var isAdReady = false
 
@@ -41,27 +42,36 @@ final class AdManager: NSObject, ObservableObject {
     // MARK: - Setup
 
     func initialize() {
-        MobileAds.shared.start { _ in }
+        guard !isInitialized else { return }
+        isInitialized = true
         #if DEBUG
         // テスト広告の設定（デバッグ時のみ）
         MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [
             "4eefe672f7a37b68f660e415fd414806"
         ]
         #endif
-        Task { await loadAd() }
+        // start 完了後に loadAd を呼ぶことでレースコンディションを回避
+        MobileAds.shared.start { [weak self] _ in
+            Task { await self?.loadAd() }
+        }
     }
 
     // MARK: - Daily Count
 
-    /// 今日の判定回数（日付が変わったら自動リセット）
+    /// 今日の判定回数（純粋なゲッター）
     var todayCount: Int {
-        resetIfNewDay()
-        return UserDefaults.standard.integer(forKey: dailyCountKey)
+        UserDefaults.standard.integer(forKey: dailyCountKey)
     }
 
     /// 広告を表示すべきか（無料枠を超えている場合 true）
+    /// 呼び出し前に ensureDailyReset() を実行すること
     var shouldShowAd: Bool {
         todayCount >= freeJudgmentsPerDay
+    }
+
+    /// 日付をまたいでいた場合にカウントをリセットする（副作用を明示的に管理）
+    func ensureDailyReset() {
+        resetIfNewDay()
     }
 
     /// 判定回数を1増やす

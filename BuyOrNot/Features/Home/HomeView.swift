@@ -148,7 +148,7 @@ struct HomeView: View {
         }
         .onChange(of: navigationCoordinator.shouldDismissToRoot) { _, should in
             if should {
-                stopBuyingComment = stopBuyingComments.randomElement()!
+                stopBuyingComment = stopBuyingComments.randomElement() ?? stopBuyingComments[0]
                 navigateToConfirm = false  // テキスト入力フロー
                 showCamera = false          // カメラフロー（fullScreenCover）
                 navigationCoordinator.shouldDismissToRoot = false
@@ -327,4 +327,5 @@ fileprivate struct TextInputSheet: View {
     NavigationStack {
         HomeView()
     }
+    .environmentObject(NavigationCoordinator())
 }

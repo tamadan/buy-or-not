@@ -349,6 +349,7 @@ private struct PhotoPicker: View {
     @State private var assets: [PHAsset] = []
     @State private var selectedID: String? = nil
     @State private var isLoading = false
+    @State private var showPermissionAlert = false
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
     private let imageManager = PHCachingImageManager()
@@ -417,26 +418,39 @@ private struct PhotoPicker: View {
                     ProgressView().tint(.white)
                 }
             }
+            .alert("写真へのアクセスが必要です", isPresented: $showPermissionAlert) {
+                Button("設定を開く") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("キャンセル", role: .cancel) { dismiss() }
+            } message: {
+                Text("設定アプリから「イルカソレ」の写真アクセスを許可してください")
+            }
         }
     }
 
     private func loadAssets() {
-        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        // 読み取り専用で権限を要求（書き込みは不要）
+        let status = PHPhotoLibrary.authorizationStatus(for: .readOnly)
         switch status {
         case .authorized, .limited:
             fetchAssets()
         case .notDetermined:
-            PHPhotoLibrary.requestAuthorization(for: .readWrite) { _ in
+            PHPhotoLibrary.requestAuthorization(for: .readOnly) { _ in
                 DispatchQueue.main.async { fetchAssets() }
             }
         default:
-            break // denied/restricted はアラート等で対応
+            // denied / restricted: アラートで設定への誘導
+            DispatchQueue.main.async { showPermissionAlert = true }
         }
     }
 
     private func fetchAssets() {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        options.fetchLimit = 500 // 最新500件に制限してメモリ圧迫を防ぐ
         let results = PHAsset.fetchAssets(with: .image, options: options)
         var loaded: [PHAsset] = []
         results.enumerateObjects { asset, _, _ in loaded.append(asset) }
@@ -449,6 +463,7 @@ private struct PhotoCell: View {
     let isSelected: Bool
     let imageManager: PHCachingImageManager
     @State private var thumbnail: UIImage?
+    @State private var requestID: PHImageRequestID?
 
     var body: some View {
         GeometryReader { geo in
@@ -484,13 +499,19 @@ private struct PhotoCell: View {
             )
             .onAppear {
                 let size = CGSize(width: geo.size.width * 2, height: geo.size.width * 2)
-                imageManager.requestImage(
+                requestID = imageManager.requestImage(
                     for: asset,
                     targetSize: size,
                     contentMode: .aspectFill,
                     options: nil
                 ) { image, _ in
                     DispatchQueue.main.async { thumbnail = image }
+                }
+            }
+            .onDisappear {
+                if let id = requestID {
+                    imageManager.cancelImageRequest(id)
+                    requestID = nil
                 }
             }
         }
