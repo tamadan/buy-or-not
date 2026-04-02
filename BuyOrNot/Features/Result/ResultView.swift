@@ -52,8 +52,7 @@ struct ResultView: View {
 
                         // 「買うのをやめる」ボタン
                         Button {
-                            navigationCoordinator.didStopBuying = true
-                            navigationCoordinator.shouldDismissToRoot = true
+                            navigationCoordinator.dismissToRoot()
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "xmark.circle.fill")
@@ -377,16 +376,18 @@ private struct BuyConfirmSheet: View {
                     color: Color(hex: "FF9900"),
                     icon: "cart.fill"
                 ) {
+                    guard let product else { return }
                     // アフィリエイト承認後は amazonURL に差し替え
-                    let urlString = product?.amazonURL
-                        ?? product?.amazonASIN.map { "https://www.amazon.co.jp/dp/\($0)" }
-                        ?? product.flatMap { p in
-                            let query = p.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                            return "https://www.amazon.co.jp/s?k=\(query)"
-                        }
-                    if let urlString, let url = URL(string: urlString) {
-                        openURL(url)
+                    let urlString: String
+                    if let url = product.amazonURL {
+                        urlString = url
+                    } else if let asin = product.amazonASIN {
+                        urlString = "https://www.amazon.co.jp/dp/\(asin)"
+                    } else {
+                        let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                        urlString = "https://www.amazon.co.jp/s?k=\(query)"
                     }
+                    if let url = URL(string: urlString) { openURL(url) }
                 }
 
                 AffiliateLinkButton(
@@ -394,16 +395,18 @@ private struct BuyConfirmSheet: View {
                     color: Color(hex: "BF0000"),
                     icon: "cart.fill"
                 ) {
+                    guard let product else { return }
                     // アフィリエイト承認後は rakutenURL に差し替え
-                    let urlString = product?.rakutenURL
-                        ?? product?.rakutenItemCode.map { "https://item.rakuten.co.jp/\($0)/" }
-                        ?? product.flatMap { p in
-                            let query = p.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                            return "https://search.rakuten.co.jp/search/mall/\(query)/"
-                        }
-                    if let urlString, let url = URL(string: urlString) {
-                        openURL(url)
+                    let urlString: String
+                    if let url = product.rakutenURL {
+                        urlString = url
+                    } else if let code = product.rakutenItemCode {
+                        urlString = "https://item.rakuten.co.jp/\(code)/"
+                    } else {
+                        let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                        urlString = "https://search.rakuten.co.jp/search/mall/\(query)/"
                     }
+                    if let url = URL(string: urlString) { openURL(url) }
                 }
             }
             .padding(.horizontal)

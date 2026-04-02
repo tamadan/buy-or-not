@@ -300,9 +300,12 @@ private struct AnalyzingOverlay: View {
             }
         }
         .onAppear {
-            loadingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            let timer = Timer(timeInterval: 0.5, repeats: true) { _ in
                 dotCount = (dotCount + 1) % 4
             }
+            // .common モードで登録することでスクロール中でも止まらずに動作する
+            RunLoop.main.add(timer, forMode: .common)
+            loadingTimer = timer
         }
         .onDisappear {
             loadingTimer?.invalidate()
