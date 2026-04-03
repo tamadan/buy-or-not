@@ -1,5 +1,14 @@
 import SwiftUI
 
+private let stopBuyingComments: [String] = [
+    "えらい！\nその判断、正解だぞ🐬",
+    "よく踏みとどまった！\nイルカも誇らしいぞ🐬",
+    "その自制心、\nすばらしい！🐬",
+    "賢い選択だ！\n財布も喜んでるぞ🐬",
+    "衝動買い回避！\n今日もいい仕事したな🐬",
+    "お金を守ったね！\nグッジョブ🐬",
+]
+
 struct HomeView: View {
     @State private var showTextInput = false
     @State private var showCamera = false
@@ -7,6 +16,8 @@ struct HomeView: View {
     @State private var identifiedProduct: Product?
     @State private var navigateToConfirm = false
     @State private var identifyError: String?
+    @State private var stopBuyingComment: String = stopBuyingComments[0]
+    @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
 
     var body: some View {
         ZStack {
@@ -17,8 +28,14 @@ struct HomeView: View {
             ScrollView {
                 VStack(spacing: 28) {
                     // NOTE: イルカキャラクターの差し替えはここ（IrukaCharacter struct をまるごと置き換え）
-                    IrukaCharacter(mood: .greeting, comment: "その買い物、\nほんとにいるか？")
-                        .padding(.top, 32)
+                    IrukaCharacter(
+                        mood: navigationCoordinator.didStopBuying ? .smug : .greeting,
+                        comment: navigationCoordinator.didStopBuying
+                            ? stopBuyingComment
+                            : "その買い物、\nほんとにいるか？"
+                    )
+                    .id(navigationCoordinator.didStopBuying)
+                    .padding(.top, 32)
 
                     // タイトル
                     VStack(spacing: 6) {
@@ -38,6 +55,7 @@ struct HomeView: View {
                     // アクションボタン
                     VStack(spacing: 12) {
                         Button {
+                            navigationCoordinator.didStopBuying = false
                             showCamera = true
                         } label: {
                             ActionCard(
@@ -49,6 +67,7 @@ struct HomeView: View {
                         }
 
                         Button {
+                            navigationCoordinator.didStopBuying = false
                             showTextInput = true
                         } label: {
                             ActionCard(
@@ -91,6 +110,7 @@ struct HomeView: View {
             NavigationStack {
                 InputView()
             }
+            .environmentObject(navigationCoordinator)
         }
         .sheet(isPresented: $showTextInput) {
             TextInputSheet { input in
@@ -114,14 +134,25 @@ struct HomeView: View {
         }
         .navigationDestination(isPresented: $navigateToConfirm) {
             if let product = identifiedProduct {
-                ConfirmView(product: product, openCamera: {
-                    navigateToConfirm = false
-                    showCamera = true
-                })
+                ConfirmView(
+                    product: product,
+                    openCamera: {
+                        navigateToConfirm = false
+                        showCamera = true
+                    }
+                )
             }
         }
         .onChange(of: identifiedProduct) { _, product in
             if product != nil { navigateToConfirm = true }
+        }
+        .onChange(of: navigationCoordinator.shouldDismissToRoot) { _, should in
+            if should {
+                stopBuyingComment = stopBuyingComments.randomElement() ?? stopBuyingComments[0]
+                navigateToConfirm = false  // テキスト入力フロー
+                showCamera = false          // カメラフロー（fullScreenCover）
+                navigationCoordinator.shouldDismissToRoot = false
+            }
         }
         .alert("エラー", isPresented: .init(
             get: { identifyError != nil },
@@ -296,4 +327,5 @@ fileprivate struct TextInputSheet: View {
     NavigationStack {
         HomeView()
     }
+    .environmentObject(NavigationCoordinator())
 }

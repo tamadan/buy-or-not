@@ -3,6 +3,8 @@ import SwiftUI
 struct ConfirmView: View {
     @StateObject private var viewModel: ConfirmViewModel
     @State private var navigateToResult = false
+    @State private var isShowingAd = false
+    @State private var adWasShown = false
     @Environment(\.dismiss) private var dismiss
 
     var openCamera: (() -> Void)? = nil
@@ -31,7 +33,23 @@ struct ConfirmView: View {
                     // ボタン
                     VStack(spacing: 12) {
                         Button {
-                            navigateToResult = true
+                            // 日付リセットを先に実行してから shouldShowAd を評価
+                            AdManager.shared.ensureDailyReset()
+                            if AdManager.shared.shouldShowAd {
+                                isShowingAd = true
+                                AdManager.shared.showAdIfNeeded { wasShown in
+                                    // 広告表示後にのみカウントを増やす
+                                    AdManager.shared.incrementCount()
+                                    isShowingAd = false
+                                    adWasShown = wasShown  // 実際に広告が表示された場合のみ true
+                                    navigateToResult = true
+                                }
+                            } else {
+                                // 広告不要時は即カウントアップして遷移
+                                AdManager.shared.incrementCount()
+                                adWasShown = false
+                                navigateToResult = true
+                            }
                         } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "checkmark.circle.fill")
@@ -47,6 +65,7 @@ struct ConfirmView: View {
                                     .fill(Color(hex: "4A90D9"))
                             )
                         }
+                        .disabled(isShowingAd)
 
                         Button {
                             viewModel.showRetrySheet = true
@@ -92,7 +111,7 @@ struct ConfirmView: View {
         .navigationTitle("商品の確認")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $navigateToResult) {
-            ResultView(product: viewModel.product)
+            ResultView(product: viewModel.product, adWasShown: adWasShown)
         }
         .sheet(isPresented: $viewModel.showRetrySheet) {
             RetrySheet(

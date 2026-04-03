@@ -3,9 +3,12 @@ import SwiftUI
 struct ResultView: View {
     @StateObject private var viewModel: ResultViewModel
     @State private var showBuyConfirm = false
+    @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
+    let adWasShown: Bool
 
-    init(product: Product? = nil) {
+    init(product: Product? = nil, adWasShown: Bool = false) {
         _viewModel = StateObject(wrappedValue: ResultViewModel(product: product))
+        self.adWasShown = adWasShown
     }
 
     var body: some View {
@@ -14,7 +17,7 @@ struct ResultView: View {
                 .ignoresSafeArea()
 
             if viewModel.isLoading {
-                LoadingView()
+                LoadingView(showAdMessage: adWasShown)
             } else {
                 ScrollView {
                     VStack(spacing: 28) {
@@ -47,9 +50,30 @@ struct ResultView: View {
                             SuggestionsSection(judgement: judgement)
                         }
 
+                        // 「買うのをやめる」ボタン
+                        Button {
+                            navigationCoordinator.dismissToRoot()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "xmark.circle.fill")
+                                Text("買うのをやめる")
+                                    .fontWeight(.bold)
+                            }
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .foregroundColor(.white)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color(hex: "2ECC71"))
+                            )
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
                         // 「それでも買う」ボタン
                         BuyAnywayButton(showConfirm: $showBuyConfirm)
-                            .padding(.top, 8)
+                            .padding(.top, 4)
 
                         Spacer(minLength: 40)
                     }
@@ -80,6 +104,8 @@ struct ResultView: View {
 // MARK: - Loading View
 
 private struct LoadingView: View {
+    let showAdMessage: Bool
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { context in
             let dotCount = Int(context.date.timeIntervalSinceReferenceDate * 2) % 4
@@ -91,6 +117,18 @@ private struct LoadingView: View {
                 Text("イルカが考えています...")
                     .font(.subheadline)
                     .foregroundColor(Color(.secondaryLabel))
+
+                if showAdMessage {
+                    HStack(spacing: 6) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(Color(hex: "4A90D9"))
+                        Text("広告なしで調べられるのは1日1回までだよ")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                    }
+                    .padding(.horizontal, 24)
+                    .multilineTextAlignment(.center)
+                }
             }
         }
     }
@@ -338,16 +376,18 @@ private struct BuyConfirmSheet: View {
                     color: Color(hex: "FF9900"),
                     icon: "cart.fill"
                 ) {
+                    guard let product else { return }
                     // アフィリエイト承認後は amazonURL に差し替え
-                    let urlString = product?.amazonURL
-                        ?? product?.amazonASIN.map { "https://www.amazon.co.jp/dp/\($0)" }
-                        ?? product.flatMap { p in
-                            let query = p.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                            return "https://www.amazon.co.jp/s?k=\(query)"
-                        }
-                    if let urlString, let url = URL(string: urlString) {
-                        openURL(url)
+                    let urlString: String
+                    if let url = product.amazonURL {
+                        urlString = url
+                    } else if let asin = product.amazonASIN {
+                        urlString = "https://www.amazon.co.jp/dp/\(asin)"
+                    } else {
+                        let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                        urlString = "https://www.amazon.co.jp/s?k=\(query)"
                     }
+                    if let url = URL(string: urlString) { openURL(url) }
                 }
 
                 AffiliateLinkButton(
@@ -355,16 +395,18 @@ private struct BuyConfirmSheet: View {
                     color: Color(hex: "BF0000"),
                     icon: "cart.fill"
                 ) {
+                    guard let product else { return }
                     // アフィリエイト承認後は rakutenURL に差し替え
-                    let urlString = product?.rakutenURL
-                        ?? product?.rakutenItemCode.map { "https://item.rakuten.co.jp/\($0)/" }
-                        ?? product.flatMap { p in
-                            let query = p.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                            return "https://search.rakuten.co.jp/search/mall/\(query)/"
-                        }
-                    if let urlString, let url = URL(string: urlString) {
-                        openURL(url)
+                    let urlString: String
+                    if let url = product.rakutenURL {
+                        urlString = url
+                    } else if let code = product.rakutenItemCode {
+                        urlString = "https://item.rakuten.co.jp/\(code)/"
+                    } else {
+                        let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                        urlString = "https://search.rakuten.co.jp/search/mall/\(query)/"
                     }
+                    if let url = URL(string: urlString) { openURL(url) }
                 }
             }
             .padding(.horizontal)
@@ -410,4 +452,5 @@ private struct AffiliateLinkButton: View {
     NavigationStack {
         ResultView()
     }
+    .environmentObject(NavigationCoordinator())
 }
