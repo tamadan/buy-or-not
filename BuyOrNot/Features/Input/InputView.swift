@@ -351,7 +351,8 @@ private struct PhotoPicker: View {
     @Environment(\.dismiss) private var dismiss
     @State private var assets: [PHAsset] = []
     @State private var selectedID: String? = nil
-    @State private var isLoading = false
+    @State private var isLoading = false       // 選択した写真の高解像度読み込み中
+    @State private var isPhotosLoading = true  // 写真一覧の初期読み込み中
     @State private var showPermissionAlert = false
     @State private var showImageLoadError = false
 
@@ -361,8 +362,12 @@ private struct PhotoPicker: View {
     var body: some View {
         NavigationStack {
             Group {
-                if assets.isEmpty {
+                if isPhotosLoading {
                     ProgressView("読み込み中...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if assets.isEmpty {
+                    Text("写真が見つかりませんでした")
+                        .foregroundColor(Color(.secondaryLabel))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
@@ -452,12 +457,22 @@ private struct PhotoPicker: View {
         case .authorized, .limited:
             fetchAssets()
         case .notDetermined:
-            PHPhotoLibrary.requestAuthorization(for: .readOnly) { _ in
-                DispatchQueue.main.async { fetchAssets() }
+            PHPhotoLibrary.requestAuthorization(for: .readOnly) { newStatus in
+                DispatchQueue.main.async {
+                    if newStatus == .authorized || newStatus == .limited {
+                        fetchAssets()
+                    } else {
+                        isPhotosLoading = false
+                        showPermissionAlert = true
+                    }
+                }
             }
         default:
             // denied / restricted: アラートで設定への誘導
-            DispatchQueue.main.async { showPermissionAlert = true }
+            DispatchQueue.main.async {
+                isPhotosLoading = false
+                showPermissionAlert = true
+            }
         }
     }
 
@@ -469,6 +484,7 @@ private struct PhotoPicker: View {
         var loaded: [PHAsset] = []
         results.enumerateObjects { asset, _, _ in loaded.append(asset) }
         assets = loaded
+        isPhotosLoading = false
     }
 }
 

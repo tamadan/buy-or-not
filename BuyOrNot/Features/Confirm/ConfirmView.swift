@@ -37,11 +37,11 @@ struct ConfirmView: View {
                             AdManager.shared.ensureDailyReset()
                             if AdManager.shared.shouldShowAd {
                                 isShowingAd = true
-                                AdManager.shared.showAdIfNeeded {
-                                    // 広告表示成功後にのみカウントを増やす
+                                AdManager.shared.showAdIfNeeded { wasShown in
+                                    // 広告表示後にのみカウントを増やす
                                     AdManager.shared.incrementCount()
                                     isShowingAd = false
-                                    adWasShown = true
+                                    adWasShown = wasShown  // 実際に広告が表示された場合のみ true
                                     navigateToResult = true
                                 }
                             } else {

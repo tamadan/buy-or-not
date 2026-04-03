@@ -30,7 +30,8 @@ final class AdManager: NSObject, ObservableObject {
     // MARK: - State
 
     private var interstitial: InterstitialAd?
-    private var adDismissedCompletion: (() -> Void)?
+    /// 広告表示後のコールバック。adWasShown=true なら実際に広告が表示されて閉じられた
+    private var adDismissedCompletion: ((_ adWasShown: Bool) -> Void)?
     private var isInitialized = false
 
     @Published private(set) var isAdReady = false
@@ -106,16 +107,20 @@ final class AdManager: NSObject, ObservableObject {
         }
     }
 
-    /// 広告を表示する。完了（または広告なし）時に completion を呼ぶ
-    func showAdIfNeeded(completion: @escaping () -> Void) {
+    /// 広告を表示する。
+    /// - completion: adWasShown=true なら広告が実際に表示・閉じられた。
+    ///               false はロード未完了・VC取得失敗などで広告がスキップされた場合
+    func showAdIfNeeded(completion: @escaping (_ adWasShown: Bool) -> Void) {
         guard shouldShowAd, let interstitial else {
-            // 広告不要 or まだロードされていない場合はそのまま進む
-            completion()
+            // 広告不要 or まだロードされていない場合はスキップ
+            completion(false)
             return
         }
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootVC = windowScene.windows.first?.rootViewController else {
-            completion()
+        // フォアグラウンドアクティブなシーンのキーウィンドウを選択
+        guard let windowScene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+            completion(false)
             return
         }
         // 一番上に表示されているVCを取得
@@ -136,7 +141,7 @@ extension AdManager: FullScreenContentDelegate {
         Task { @MainActor in
             self.interstitial = nil
             self.isAdReady = false
-            self.adDismissedCompletion?()
+            self.adDismissedCompletion?(true)   // 広告が実際に表示・閉じられた
             self.adDismissedCompletion = nil
             await self.loadAd()
         }
@@ -148,7 +153,7 @@ extension AdManager: FullScreenContentDelegate {
             print("AdManager: 広告の表示に失敗しました: \(error.localizedDescription)")
             self.interstitial = nil
             self.isAdReady = false
-            self.adDismissedCompletion?()
+            self.adDismissedCompletion?(false)  // 表示失敗（広告は見せられていない）
             self.adDismissedCompletion = nil
             await self.loadAd()
         }

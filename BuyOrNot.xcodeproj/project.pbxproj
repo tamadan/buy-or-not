@@ -221,6 +221,9 @@
 			dependencies = (
 			);
 			name = BuyOrNot;
+			packageProductDependencies = (
+				494300372F7E8D6900860CED /* GoogleMobileAds */,
+			);
 			productName = BuyOrNot;
 			productReference = C1000001 /* BuyOrNot.app */;
 			productType = "com.apple.product-type.application";
