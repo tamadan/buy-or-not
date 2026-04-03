@@ -451,13 +451,13 @@ private struct PhotoPicker: View {
     }
 
     private func loadAssets() {
-        // 読み取り専用で権限を要求（書き込みは不要）
-        let status = PHPhotoLibrary.authorizationStatus(for: .readOnly)
+        // PHAccessLevel は .addOnly / .readWrite のみ存在（.readOnly は無効）
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         switch status {
         case .authorized, .limited:
             fetchAssets()
         case .notDetermined:
-            PHPhotoLibrary.requestAuthorization(for: .readOnly) { newStatus in
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
                 DispatchQueue.main.async {
                     if newStatus == .authorized || newStatus == .limited {
                         fetchAssets()
