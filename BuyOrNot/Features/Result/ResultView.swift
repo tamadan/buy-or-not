@@ -169,17 +169,20 @@ private struct ProductHeader: View {
                             .fontWeight(.medium)
                             .foregroundColor(Color(hex: "F39C12"))
                     }
-                    if let min = product.priceRangeMin, let max = product.priceRangeMax {
-                        Text("大体 ¥\(min.formatted()) 〜 ¥\(max.formatted()) くらい")
-                            .font(.title3)
-                            .fontWeight(.heavy)
-                            .foregroundColor(Color(hex: "E74C3C"))
-                    } else if let min = product.priceRangeMin {
-                        Text("大体 ¥\(min.formatted()) 〜")
-                            .font(.title3)
-                            .fontWeight(.heavy)
-                            .foregroundColor(Color(hex: "E74C3C"))
+                    Group {
+                        if let min = product.priceRangeMin, let max = product.priceRangeMax {
+                            Text("大体 ¥\(min.formatted()) 〜 ¥\(max.formatted()) くらい")
+                        } else if let min = product.priceRangeMin {
+                            Text("大体 ¥\(min.formatted()) 〜")
+                        } else if let max = product.priceRangeMax {
+                            Text("〜 ¥\(max.formatted()) くらい")
+                        } else {
+                            Text("価格不明")
+                        }
                     }
+                    .font(.title3)
+                    .fontWeight(.heavy)
+                    .foregroundColor(Color(hex: "E74C3C"))
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)

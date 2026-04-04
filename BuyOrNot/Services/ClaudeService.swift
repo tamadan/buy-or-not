@@ -266,7 +266,11 @@ final class ClaudeService {
             let max = product.priceRangeMax.map { "¥\($0)" } ?? "不明"
             priceInfo = "おおよその価格帯: \(min) 〜 \(max)（ざっくりしか特定できていない商品）"
         } else {
-            priceInfo = product.estimatedPrice.map { "¥\($0)" } ?? "不明"
+            // estimatedPrice は identifyProduct 時点では nil のまま渡される設計。
+            // 実際の価格は searchResults（Tavily検索結果）に含まれており、
+            // Claude がそこから読み取って judgement を生成する。
+            // with(estimatedPrice:) による enrichment は judgeProduct の戻り値を受けて呼び元が行う。
+            priceInfo = product.estimatedPrice.map { "¥\($0)" } ?? "不明（Web検索結果を参照）"
         }
 
         let productInfo = """
