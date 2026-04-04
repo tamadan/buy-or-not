@@ -178,7 +178,19 @@ private struct ProductConfirmCard: View {
                     .fontWeight(.bold)
                     .foregroundColor(Color(.label))
 
-                if let price = product.estimatedPrice {
+                if product.isVague {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundColor(Color(hex: "F39C12"))
+                        if let min = product.priceRangeMin, let max = product.priceRangeMax {
+                            Text("大体 ¥\(min.formatted()) 〜 ¥\(max.formatted()) くらい")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color(hex: "E74C3C"))
+                        }
+                    }
+                } else if let price = product.estimatedPrice {
                     Text("推定 ¥\(price.formatted())")
                         .font(.headline)
                         .foregroundColor(Color(hex: "E74C3C"))
