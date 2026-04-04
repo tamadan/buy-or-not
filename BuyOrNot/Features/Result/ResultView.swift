@@ -157,7 +157,40 @@ private struct ProductHeader: View {
                 .foregroundColor(Color(.label))
                 .multilineTextAlignment(.center)
 
-            if let price = product.estimatedPrice {
+            if product.isVague {
+                // ざっくりしか特定できなかった場合
+                VStack(spacing: 4) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundColor(Color(hex: "F39C12"))
+                        Text("ざっくりしか特定できなかったよ")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(Color(hex: "F39C12"))
+                    }
+                    Group {
+                        if let min = product.priceRangeMin, let max = product.priceRangeMax {
+                            Text("大体 ¥\(min.formatted()) 〜 ¥\(max.formatted()) くらい")
+                        } else if let min = product.priceRangeMin {
+                            Text("大体 ¥\(min.formatted()) 〜")
+                        } else if let max = product.priceRangeMax {
+                            Text("〜 ¥\(max.formatted()) くらい")
+                        } else {
+                            Text("価格不明")
+                        }
+                    }
+                    .font(.title3)
+                    .fontWeight(.heavy)
+                    .foregroundColor(Color(hex: "E74C3C"))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(hex: "F39C12").opacity(0.08))
+                )
+            } else if let price = product.estimatedPrice {
                 Text("¥\(price.formatted())")
                     .font(.title2)
                     .fontWeight(.heavy)

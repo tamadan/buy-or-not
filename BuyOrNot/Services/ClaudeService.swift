@@ -46,18 +46,43 @@ final class ClaudeService {
         let base64 = imageData.base64EncodedString()
 
         let prompt = """
-        この商品の画像を見て、以下のJSON形式のみで返してください。余分な説明は不要です。
+        この商品画像を分析して、以下のJSON形式のみで返してください。余分な説明は不要です。
 
+        ## 最優先タスク：ブランド名・型番・商品名の特定
+        - 画像に写っているロゴ、ブランド名、型番、モデル名を可能な限り読み取ってください
+        - 例: "SONY WH-1000XM5"、"Apple AirPods Pro (第2世代)"、"Dyson V15 Detect"
+        - ブランドが特定できれば、そのブランドの該当モデルとして回答してください
+        - バーコード、型番シール、ロゴなどあらゆる手がかりを使ってください
+
+        ## isVague の判定基準
+        - isVague: false → ブランド名＋商品名（または型番）が特定できた場合
+        - isVague: true → カテゴリ程度しかわからない、または「ダイニングテーブル」「ソファ」のように
+                         同カテゴリ内で価格帯が数倍以上異なる場合
+
+        ## isVague=false の場合
         {
-          "name": "商品名",
-          "category": "カテゴリ（例: イヤホン, スマートフォン, 本, 食品, 家電）",
-          "estimatedPrice": 推定価格（円、整数。不明な場合は null）
+          "name": "ブランド名＋商品名（例: SONY WH-1000XM5）",
+          "category": "カテゴリ（例: ヘッドホン、スマートフォン、家電）",
+          "estimatedPrice": 推定価格（円・整数）または null,
+          "isVague": false,
+          "priceRangeMin": null,
+          "priceRangeMax": null
+        }
+
+        ## isVague=true の場合
+        {
+          "name": "わかる範囲でのカテゴリ名（例: ダイニングテーブル、革製ソファ）",
+          "category": "大カテゴリ（例: 家具、インテリア）",
+          "estimatedPrice": null,
+          "isVague": true,
+          "priceRangeMin": おおよその最低価格（円・整数）,
+          "priceRangeMax": おおよその最高価格（円・整数）
         }
         """
 
         let body: [String: Any] = [
             "model": model,
-            "max_tokens": 256,
+            "max_tokens": 512,
             "messages": [[
                 "role": "user",
                 "content": [
@@ -235,10 +260,24 @@ final class ClaudeService {
             return (mockJudgement(product: product), nil)
         }
 
+        let priceInfo: String
+        if product.isVague {
+            let min = product.priceRangeMin.map { "¥\($0)" } ?? "不明"
+            let max = product.priceRangeMax.map { "¥\($0)" } ?? "不明"
+            priceInfo = "おおよその価格帯: \(min) 〜 \(max)（ざっくりしか特定できていない商品）"
+        } else {
+            // estimatedPrice は identifyProduct 時点では nil のまま渡される設計。
+            // 実際の価格は searchResults（Tavily検索結果）に含まれており、
+            // Claude がそこから読み取って judgement を生成する。
+            // with(estimatedPrice:) による enrichment は judgeProduct の戻り値を受けて呼び元が行う。
+            priceInfo = product.estimatedPrice.map { "¥\($0)" } ?? "不明（Web検索結果を参照）"
+        }
+
         let productInfo = """
         商品名: \(product.name)
         カテゴリ: \(product.category ?? "不明")
-        推定価格: \(product.estimatedPrice.map { "¥\($0)" } ?? "不明")
+        推定価格: \(priceInfo)
+        ざっくり識別: \(product.isVague ? "はい（カテゴリ程度しかわかっていない）" : "いいえ（商品名・ブランド特定済み）")
         """
 
         let searchContext = searchResults.isEmpty
@@ -384,8 +423,20 @@ final class ClaudeService {
         let json = try await sendRequestRaw(body: body)
         let name = json["name"] as? String ?? "不明な商品"
         let category = json["category"] as? String
+        let isVague = json["isVague"] as? Bool ?? false
+        let priceRangeMin: Int? = (json["priceRangeMin"] as? Int)
+            ?? (json["priceRangeMin"] as? Double).map { Int($0) }
+        let priceRangeMax: Int? = (json["priceRangeMax"] as? Int)
+            ?? (json["priceRangeMax"] as? Double).map { Int($0) }
         // 価格は Tavily 検索後に judgeProduct で取得するため、ここでは設定しない
-        return Product(name: name, category: category, estimatedPrice: nil)
+        return Product(
+            name: name,
+            category: category,
+            estimatedPrice: nil,
+            isVague: isVague,
+            priceRangeMin: priceRangeMin,
+            priceRangeMax: priceRangeMax
+        )
     }
 
     // MARK: - エラー定義
