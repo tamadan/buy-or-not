@@ -98,6 +98,12 @@ struct ResultView: View {
         }
         .onChange(of: viewModel.judgement) { _, judgement in
             guard let judgement, let product = viewModel.product else { return }
+            // 二重保存防止: 既に保存済みならフィールドを更新するだけ
+            if let existing = historyItem {
+                existing.irukaComment = judgement.irukaComment
+                existing.stopPointTitles = judgement.stopPoints.map { $0.title }
+                return
+            }
             let item = JudgementHistory(
                 productName: product.name,
                 productCategory: product.category,
@@ -463,8 +469,9 @@ private struct BuyConfirmSheet: View {
                             urlString = "https://www.amazon.co.jp/s?k=\(query)"
                         }
                         if let url = URL(string: urlString) {
-                            onDidBuy?()
-                            openURL(url)
+                            openURL(url) { accepted in
+                                if accepted { onDidBuy?() }
+                            }
                         }
                     }
 
@@ -488,8 +495,9 @@ private struct BuyConfirmSheet: View {
                             urlString = "https://search.rakuten.co.jp/search/mall/\(query)/"
                         }
                         if let url = URL(string: urlString) {
-                            onDidBuy?()
-                            openURL(url)
+                            openURL(url) { accepted in
+                                if accepted { onDidBuy?() }
+                            }
                         }
                     }
                 }

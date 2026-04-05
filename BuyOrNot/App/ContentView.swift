@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
     @StateObject private var navigationCoordinator = NavigationCoordinator()
@@ -25,4 +26,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .modelContainer(for: JudgementHistory.self, inMemory: true)
 }
