@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 @main
 struct BuyOrNotApp: App {
@@ -11,5 +12,6 @@ struct BuyOrNotApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: JudgementHistory.self)
     }
 }
