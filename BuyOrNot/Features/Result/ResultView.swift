@@ -429,10 +429,13 @@ private struct BuyConfirmSheet: View {
                     ) {
                         guard let product else { return }
                         let urlString: String
-                        if let url = product.amazonURL {
-                            urlString = url
-                        } else if let asin = product.amazonASIN {
+                        // ASIN優先で正規URLを構築。amazonURLはホスト検証後のみ使用
+                        if let asin = product.amazonASIN {
                             urlString = "https://www.amazon.co.jp/dp/\(asin)"
+                        } else if let raw = product.amazonURL,
+                                  let host = URL(string: raw)?.host,
+                                  host == "amazon.co.jp" || host == "www.amazon.co.jp" {
+                            urlString = raw
                         } else {
                             let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
                             urlString = "https://www.amazon.co.jp/s?k=\(query)"
@@ -447,10 +450,14 @@ private struct BuyConfirmSheet: View {
                     ) {
                         guard let product else { return }
                         let urlString: String
-                        if let url = product.rakutenURL {
-                            urlString = url
-                        } else if let code = product.rakutenItemCode {
+                        // itemCode優先で正規URLを構築。rakutenURLはホスト検証後のみ使用
+                        let trustedRakutenHosts = ["item.rakuten.co.jp", "www.rakuten.co.jp", "search.rakuten.co.jp"]
+                        if let code = product.rakutenItemCode {
                             urlString = "https://item.rakuten.co.jp/\(code)/"
+                        } else if let raw = product.rakutenURL,
+                                  let host = URL(string: raw)?.host,
+                                  trustedRakutenHosts.contains(host) {
+                            urlString = raw
                         } else {
                             let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
                             urlString = "https://search.rakuten.co.jp/search/mall/\(query)/"

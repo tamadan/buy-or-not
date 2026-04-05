@@ -310,7 +310,7 @@ final class ClaudeService {
             { "icon": "archivebox", "title": "似たの持ってない？", "detail": "今使ってるイヤホンやヘッドホン、何個ある？全部使い切ってる？" },
             { "icon": "clock.arrow.circlepath", "title": "1週間後も欲しい？", "detail": "今感じてる欲しい気持ち、セール終わっても同じくらいある？" }
           ],
-          "irukaComment": "今のイヤホン、まだ壊れてないよね？",
+          "irukaComment": "週3回使うとして1回約250円、それだけの価値ある？",
           "alternativeSuggestion": "今持ってるイヤホンのノイキャンモード、ちゃんと試した？",
           "waitSuggestion": "次のセールまで待てば5,000円くらい安くなるかも"
         }
@@ -350,7 +350,8 @@ final class ClaudeService {
             let icon = sp["icon"] as? String ?? "questionmark.circle"
             return StopPoint(icon: icon, title: title, detail: detail)
         }
-        guard !stopPoints.isEmpty else { throw ClaudeError.parseError }
+        // プロンプトで4個必須と指定しているため3個未満は不正レスポンスとみなす
+        guard stopPoints.count >= 3 else { throw ClaudeError.parseError }
 
         let productDescription = json["productDescription"] as? String
         let irukaComment = json["irukaComment"] as? String ?? "ほんとにいるか？"
