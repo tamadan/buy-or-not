@@ -30,6 +30,7 @@
 		A100001B /* NavigationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100001B /* NavigationCoordinator.swift */; };
 		A100001C /* JudgementHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100001C /* JudgementHistory.swift */; };
 		A100001D /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100001D /* HistoryView.swift */; };
+		A100001E /* PremiumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100001E /* PremiumManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +56,8 @@
 		B100001B /* NavigationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationCoordinator.swift; sourceTree = "<group>"; };
 		B100001C /* JudgementHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JudgementHistory.swift; sourceTree = "<group>"; };
 		B100001D /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		B100001E /* PremiumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumManager.swift; sourceTree = "<group>"; };
+		B100001F /* BuyOrNot.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = BuyOrNot.storekit; sourceTree = "<group>"; };
 		C1000001 /* BuyOrNot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuyOrNot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -75,6 +78,7 @@
 			children = (
 				E1000002 /* BuyOrNot */,
 				E1000009 /* Products */,
+				B100001F /* BuyOrNot.storekit */,
 			);
 			sourceTree = "<group>";
 		};
@@ -173,6 +177,7 @@
 			children = (
 				B100001A /* AdManager.swift */,
 				B1000010 /* ClaudeService.swift */,
+				B100001E /* PremiumManager.swift */,
 				B1000017 /* TavilyService.swift */,
 			);
 			path = Services;
@@ -316,6 +321,7 @@
 				A100001B /* NavigationCoordinator.swift in Sources */,
 				A100001C /* JudgementHistory.swift in Sources */,
 				A100001D /* HistoryView.swift in Sources */,
+				A100001E /* PremiumManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -453,6 +459,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 7964SZZU88;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = BuyOrNot/Resources/Info.plist;
 				MARKETING_VERSION = 1.0;
@@ -472,6 +479,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 7964SZZU88;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = BuyOrNot/Resources/Info.plist;
 				MARKETING_VERSION = 1.0;
