@@ -391,26 +391,58 @@ private struct BuyConfirmSheet: View {
     let onDismiss: () -> Void
     @Environment(\.openURL) private var openURL
 
+    private let cooldownSeconds = 10
+    @State private var countdown: Int = 10
+    @State private var canPurchase: Bool = false
+    @State private var timer: Timer? = nil
+
     var body: some View {
         VStack(spacing: 24) {
             IrukaCharacter(
                 mood: .pleading,
-                comment: "ほんとに買うの…？",
+                comment: canPurchase ? "…本当にいいの？" : "ほんとに買うの…？",
                 size: 90
             )
 
-            Text("イルカは止めたからね…")
-                .font(.subheadline)
-                .foregroundColor(Color(.secondaryLabel))
+            if canPurchase {
+                Text("イルカは止めたからね…")
+                    .font(.subheadline)
+                    .foregroundColor(Color(.secondaryLabel))
+            } else {
+                // カウントダウン表示
+                VStack(spacing: 4) {
+                    Text("あと \(countdown) 秒、考えてみて")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(Color(.secondaryLabel))
+                    // プログレスバー
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color(.systemGray5))
+                                .frame(height: 4)
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color(hex: "3498DB"))
+                                .frame(
+                                    width: geo.size.width * CGFloat(cooldownSeconds - countdown) / CGFloat(cooldownSeconds),
+                                    height: 4
+                                )
+                                .animation(.linear(duration: 1), value: countdown)
+                        }
+                    }
+                    .frame(height: 4)
+                    .padding(.horizontal, 32)
+                }
+            }
 
             VStack(spacing: 12) {
                 AffiliateLinkButton(
                     title: "Amazonで探す",
-                    color: Color(hex: "FF9900"),
-                    icon: "cart.fill"
+                    color: canPurchase ? Color(hex: "FF9900") : Color(.systemGray4),
+                    icon: "cart.fill",
+                    disabled: !canPurchase
                 ) {
                     guard let product else { return }
-                    // アフィリエイト承認後は amazonURL に差し替え
                     let urlString: String
                     if let url = product.amazonURL {
                         urlString = url
@@ -425,11 +457,11 @@ private struct BuyConfirmSheet: View {
 
                 AffiliateLinkButton(
                     title: "楽天で探す",
-                    color: Color(hex: "BF0000"),
-                    icon: "cart.fill"
+                    color: canPurchase ? Color(hex: "BF0000") : Color(.systemGray4),
+                    icon: "cart.fill",
+                    disabled: !canPurchase
                 ) {
                     guard let product else { return }
-                    // アフィリエイト承認後は rakutenURL に差し替え
                     let urlString: String
                     if let url = product.rakutenURL {
                         urlString = url
@@ -452,6 +484,24 @@ private struct BuyConfirmSheet: View {
             .padding(.bottom, 8)
         }
         .padding(.top, 24)
+        .onAppear { startCountdown() }
+        .onDisappear { timer?.invalidate() }
+    }
+
+    private func startCountdown() {
+        countdown = cooldownSeconds
+        canPurchase = false
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { t in
+            if countdown > 1 {
+                countdown -= 1
+            } else {
+                countdown = 0
+                canPurchase = true
+                t.invalidate()
+            }
+        }
+        if let timer { RunLoop.main.add(timer, forMode: .common) }
     }
 }
 
@@ -459,6 +509,7 @@ private struct AffiliateLinkButton: View {
     let title: String
     let color: Color
     let icon: String
+    var disabled: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -476,6 +527,8 @@ private struct AffiliateLinkButton: View {
                     .fill(color)
             )
         }
+        .disabled(disabled)
+        .animation(.easeInOut(duration: 0.3), value: disabled)
     }
 }
 
