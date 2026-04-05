@@ -1,9 +1,12 @@
 import SwiftUI
+import SwiftData
 
 struct ResultView: View {
     @StateObject private var viewModel: ResultViewModel
     @State private var showBuyConfirm = false
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
+    @Environment(\.modelContext) private var modelContext
+    @State private var historyItem: JudgementHistory?
     let adWasShown: Bool
 
     init(product: Product? = nil, adWasShown: Bool = false) {
@@ -86,9 +89,33 @@ struct ResultView: View {
         .sheet(isPresented: $showBuyConfirm) {
             BuyConfirmSheet(
                 product: viewModel.product,
-                onDismiss: { showBuyConfirm = false }
+                onDismiss: { showBuyConfirm = false },
+                onDidBuy: {
+                    historyItem?.didBuy = true
+                }
             )
             .presentationDetents([.medium])
+        }
+        .onChange(of: viewModel.judgement) { _, judgement in
+            guard let judgement, let product = viewModel.product else { return }
+            // 二重保存防止: 既に保存済みならフィールドを更新するだけ
+            if let existing = historyItem {
+                existing.irukaComment = judgement.irukaComment
+                existing.stopPointTitles = judgement.stopPoints.map { $0.title }
+                return
+            }
+            let item = JudgementHistory(
+                productName: product.name,
+                productCategory: product.category,
+                estimatedPrice: product.estimatedPrice,
+                isVague: product.isVague,
+                priceRangeMin: product.priceRangeMin,
+                priceRangeMax: product.priceRangeMax,
+                irukaComment: judgement.irukaComment,
+                stopPointTitles: judgement.stopPoints.map { $0.title }
+            )
+            modelContext.insert(item)
+            historyItem = item
         }
         .alert("エラー", isPresented: .init(
             get: { viewModel.errorMessage != nil },
@@ -389,6 +416,7 @@ private struct BuyAnywayButton: View {
 private struct BuyConfirmSheet: View {
     let product: Product?
     let onDismiss: () -> Void
+    var onDidBuy: (() -> Void)? = nil
     @Environment(\.openURL) private var openURL
     @FocusState private var isReasonFocused: Bool
 
@@ -440,7 +468,11 @@ private struct BuyConfirmSheet: View {
                             let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
                             urlString = "https://www.amazon.co.jp/s?k=\(query)"
                         }
-                        if let url = URL(string: urlString) { openURL(url) }
+                        if let url = URL(string: urlString) {
+                            openURL(url) { accepted in
+                                if accepted { onDidBuy?() }
+                            }
+                        }
                     }
 
                     AffiliateLinkButton(
@@ -462,7 +494,11 @@ private struct BuyConfirmSheet: View {
                             let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
                             urlString = "https://search.rakuten.co.jp/search/mall/\(query)/"
                         }
-                        if let url = URL(string: urlString) { openURL(url) }
+                        if let url = URL(string: urlString) {
+                            openURL(url) { accepted in
+                                if accepted { onDidBuy?() }
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -548,4 +584,5 @@ private struct AffiliateLinkButton: View {
         ResultView()
     }
     .environmentObject(NavigationCoordinator())
+    .modelContainer(for: JudgementHistory.self, inMemory: true)
 }
