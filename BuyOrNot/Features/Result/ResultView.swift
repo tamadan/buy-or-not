@@ -584,4 +584,5 @@ private struct AffiliateLinkButton: View {
         ResultView()
     }
     .environmentObject(NavigationCoordinator())
+    .modelContainer(for: JudgementHistory.self, inMemory: true)
 }
