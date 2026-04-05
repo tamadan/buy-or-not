@@ -28,6 +28,8 @@
 		A1000019 /* UIImage+Resize.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000019 /* UIImage+Resize.swift */; };
 		A100001A /* AdManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100001A /* AdManager.swift */; };
 		A100001B /* NavigationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100001B /* NavigationCoordinator.swift */; };
+		A100001C /* JudgementHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100001C /* JudgementHistory.swift */; };
+		A100001D /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100001D /* HistoryView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +53,8 @@
 		B1000019 /* UIImage+Resize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIImage+Resize.swift"; sourceTree = "<group>"; };
 		B100001A /* AdManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdManager.swift; sourceTree = "<group>"; };
 		B100001B /* NavigationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationCoordinator.swift; sourceTree = "<group>"; };
+		B100001C /* JudgementHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JudgementHistory.swift; sourceTree = "<group>"; };
+		B100001D /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		C1000001 /* BuyOrNot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuyOrNot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -103,6 +107,7 @@
 			children = (
 				E1000006 /* Components */,
 				E1000012 /* Confirm */,
+				E1000016 /* History */,
 				E1000010 /* Input */,
 				E1000013 /* Home */,
 				E1000005 /* Result */,
@@ -132,6 +137,7 @@
 			children = (
 				B1000003 /* Product.swift */,
 				B1000005 /* Judgement.swift */,
+				B100001C /* JudgementHistory.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -203,6 +209,14 @@
 				B1000019 /* UIImage+Resize.swift */,
 			);
 			path = Extensions;
+			sourceTree = "<group>";
+		};
+		E1000016 /* History */ = {
+			isa = PBXGroup;
+			children = (
+				B100001D /* HistoryView.swift */,
+			);
+			path = History;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -300,6 +314,8 @@
 				A1000019 /* UIImage+Resize.swift in Sources */,
 				A100001A /* AdManager.swift in Sources */,
 				A100001B /* NavigationCoordinator.swift in Sources */,
+				A100001C /* JudgementHistory.swift in Sources */,
+				A100001D /* HistoryView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
