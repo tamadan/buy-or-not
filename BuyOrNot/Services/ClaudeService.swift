@@ -285,8 +285,35 @@ final class ClaudeService {
             : searchResults.prefix(4).joined(separator: "\n\n")
 
         let prompt = """
-        あなたは「本当にその買い物は必要か？」をユーザーに問いかけるアシスタントです。
-        商品を批判するのではなく、ユーザー自身が「本当に必要か」を考えるきっかけを与えてください。
+        あなたはユーザーの「本当にこれが必要か？」という自問を全力でサポートするアシスタントです。
+        商品そのものを批判したり欠点を指摘したりしてはいけません。
+        「ユーザー自身の生活・習慣・財布」に照らして、本当に必要かを問いかけてください。
+
+        ## ルール
+        - 商品・メーカーを批判しない。欠点指摘も禁止
+        - 「あなたに本当に必要か？」という問いかけに徹する
+        - stopPoints は必ず4個。視点例：必要性・代替性・使用頻度・経済性・時間軸
+        - 各 stopPoint は問いかけ形式で。title 20字以内・detail 60字以内
+        - irukaComment は砕けた口調30字以内。価格・回数・日数など具体的な数字を入れると刺さる
+          例：「月3回しか使わないなら1回○円だよ？」「1週間後も欲しい？」
+        - icon は SF Symbols 名（例: questionmark.circle, yensign.circle, clock.arrow.circlepath）
+        - currentPrice は検索結果に価格があれば必ず設定
+        - 抽象的な表現を避け、この商品の価格・用途に具体的に紐づけた問いかけにする
+
+        ## 出力例（AirPods Proの場合）
+        {
+          "currentPrice": 39800,
+          "productDescription": "...",
+          "stopPoints": [
+            { "icon": "headphones", "title": "今のイヤホンで困ってる？", "detail": "直近1ヶ月で今のイヤホンに不満を感じた場面は何回あった？" },
+            { "icon": "yensign.circle", "title": "1回あたりの価値は？", "detail": "週3回使うとして1回あたり約250円。それだけの体験の差がある？" },
+            { "icon": "archivebox", "title": "似たの持ってない？", "detail": "今使ってるイヤホンやヘッドホン、何個ある？全部使い切ってる？" },
+            { "icon": "clock.arrow.circlepath", "title": "1週間後も欲しい？", "detail": "今感じてる欲しい気持ち、セール終わっても同じくらいある？" }
+          ],
+          "irukaComment": "週3回使うとして1回約250円、それだけの価値ある？",
+          "alternativeSuggestion": "今持ってるイヤホンのノイキャンモード、ちゃんと試した？",
+          "waitSuggestion": "次のセールまで待てば5,000円くらい安くなるかも"
+        }
 
         ## 商品情報
         \(productInfo)
@@ -296,29 +323,13 @@ final class ClaudeService {
 
         ## 出力形式（JSONのみ。説明不要）
         {
-          "currentPrice": 検索結果から判明した日本での現在の販売価格（円・整数。不明な場合は null）,
-          "productDescription": 検索結果をもとにした商品説明。主なスペック・特徴・他製品との違いを含めて200字程度で詳しく書く,
-          "stopPoints": [
-            {
-              "icon": "SF Symbol名",
-              "title": "問いかけの見出し（20字以内）",
-              "detail": "具体的な説明（60字以内）"
-            }
-          ],
-          "irukaComment": "イルカの一言（30字以内、フレンドリーに）",
-          "alternativeSuggestion": "代替案（あれば。なければ null）",
-          "waitSuggestion": "「少し待ってみては？」系のアドバイス（あれば。なければ null）"
+          "currentPrice": 販売価格（円・整数。不明な場合は null）,
+          "productDescription": スペック・特徴・他製品との違いを200字程度,
+          "stopPoints": [{"icon": "SF Symbol名", "title": "見出し", "detail": "問いかけ"}],
+          "irukaComment": "イルカの一言",
+          "alternativeSuggestion": "代替案。なければ null",
+          "waitSuggestion": "待つ提案。なければ null"
         }
-
-        ## ルール
-        - currentPrice は検索結果に価格情報があれば必ず設定する
-        - stopPoints は3〜4個。検索結果から得たスペックや特徴を根拠にして具体的に書く
-          例：「重量680gで長時間装着すると首に負担」「ノイキャンは前世代より20%向上だが旧モデルで代用可」
-        - 商品や企業を批判しない。「ユーザー自身に問いかける」視点で書く
-        - irukaComment は「ほんとにいるか？」のようなキャラクターらしい口調
-        - icon は SF Symbols の名前（例: questionmark.circle, yensign.circle, clock.arrow.circlepath）
-        - 価格が高い場合はコスパの問いかけを必ず含める
-        - 抽象的な表現を避け、この商品固有の具体的な数値・特徴を使う
         """
 
         let body: [String: Any] = [
@@ -339,7 +350,8 @@ final class ClaudeService {
             let icon = sp["icon"] as? String ?? "questionmark.circle"
             return StopPoint(icon: icon, title: title, detail: detail)
         }
-        guard !stopPoints.isEmpty else { throw ClaudeError.parseError }
+        // プロンプトで4個必須と指定しているため3個未満は不正レスポンスとみなす
+        guard stopPoints.count >= 3 else { throw ClaudeError.parseError }
 
         let productDescription = json["productDescription"] as? String
         let irukaComment = json["irukaComment"] as? String ?? "ほんとにいるか？"

@@ -390,59 +390,117 @@ private struct BuyConfirmSheet: View {
     let product: Product?
     let onDismiss: () -> Void
     @Environment(\.openURL) private var openURL
+    @FocusState private var isReasonFocused: Bool
+
+    @State private var reason: String = ""
+    @State private var canPurchase: Bool = false
+
+    private var canSubmitReason: Bool {
+        reason.trimmingCharacters(in: .whitespacesAndNewlines).count >= 1
+    }
 
     var body: some View {
         VStack(spacing: 24) {
             IrukaCharacter(
                 mood: .pleading,
-                comment: "ほんとに買うの…？",
+                comment: canPurchase ? "…後悔しないでね" : "なんで欲しいの？",
                 size: 90
             )
 
-            Text("イルカは止めたからね…")
-                .font(.subheadline)
-                .foregroundColor(Color(.secondaryLabel))
-
-            VStack(spacing: 12) {
-                AffiliateLinkButton(
-                    title: "Amazonで探す",
-                    color: Color(hex: "FF9900"),
-                    icon: "cart.fill"
-                ) {
-                    guard let product else { return }
-                    // アフィリエイト承認後は amazonURL に差し替え
-                    let urlString: String
-                    if let url = product.amazonURL {
-                        urlString = url
-                    } else if let asin = product.amazonASIN {
-                        urlString = "https://www.amazon.co.jp/dp/\(asin)"
-                    } else {
-                        let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                        urlString = "https://www.amazon.co.jp/s?k=\(query)"
-                    }
-                    if let url = URL(string: urlString) { openURL(url) }
+            if canPurchase {
+                // 理由入力済み → 購入リンクを表示
+                VStack(spacing: 4) {
+                    Text("「\(reason.trimmingCharacters(in: .whitespacesAndNewlines))」")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(Color(.label))
+                        .multilineTextAlignment(.center)
+                    Text("…わかった。イルカは止めたからね")
+                        .font(.caption)
+                        .foregroundColor(Color(.secondaryLabel))
                 }
+                .padding(.horizontal)
 
-                AffiliateLinkButton(
-                    title: "楽天で探す",
-                    color: Color(hex: "BF0000"),
-                    icon: "cart.fill"
-                ) {
-                    guard let product else { return }
-                    // アフィリエイト承認後は rakutenURL に差し替え
-                    let urlString: String
-                    if let url = product.rakutenURL {
-                        urlString = url
-                    } else if let code = product.rakutenItemCode {
-                        urlString = "https://item.rakuten.co.jp/\(code)/"
-                    } else {
-                        let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                        urlString = "https://search.rakuten.co.jp/search/mall/\(query)/"
+                VStack(spacing: 12) {
+                    AffiliateLinkButton(
+                        title: "Amazonで探す",
+                        color: Color(hex: "FF9900"),
+                        icon: "cart.fill"
+                    ) {
+                        guard let product else { return }
+                        let urlString: String
+                        // ASIN優先で正規URLを構築。amazonURLはホスト検証後のみ使用
+                        if let asin = product.amazonASIN {
+                            urlString = "https://www.amazon.co.jp/dp/\(asin)"
+                        } else if let raw = product.amazonURL,
+                                  let host = URL(string: raw)?.host,
+                                  host == "amazon.co.jp" || host == "www.amazon.co.jp" {
+                            urlString = raw
+                        } else {
+                            let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                            urlString = "https://www.amazon.co.jp/s?k=\(query)"
+                        }
+                        if let url = URL(string: urlString) { openURL(url) }
                     }
-                    if let url = URL(string: urlString) { openURL(url) }
+
+                    AffiliateLinkButton(
+                        title: "楽天で探す",
+                        color: Color(hex: "BF0000"),
+                        icon: "cart.fill"
+                    ) {
+                        guard let product else { return }
+                        let urlString: String
+                        // itemCode優先で正規URLを構築。rakutenURLはホスト検証後のみ使用
+                        let trustedRakutenHosts = ["item.rakuten.co.jp", "www.rakuten.co.jp", "search.rakuten.co.jp"]
+                        if let code = product.rakutenItemCode {
+                            urlString = "https://item.rakuten.co.jp/\(code)/"
+                        } else if let raw = product.rakutenURL,
+                                  let host = URL(string: raw)?.host,
+                                  trustedRakutenHosts.contains(host) {
+                            urlString = raw
+                        } else {
+                            let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                            urlString = "https://search.rakuten.co.jp/search/mall/\(query)/"
+                        }
+                        if let url = URL(string: urlString) { openURL(url) }
+                    }
+                }
+                .padding(.horizontal)
+
+            } else {
+                // 理由入力フェーズ
+                VStack(spacing: 12) {
+                    Text("一言でいいので理由を教えて")
+                        .font(.caption)
+                        .foregroundColor(Color(.secondaryLabel))
+
+                    TextField("例：仕事で毎日使うから", text: $reason, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(2...4)
+                        .focused($isReasonFocused)
+                        .padding(.horizontal)
+
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                            canPurchase = true
+                            isReasonFocused = false
+                        }
+                    } label: {
+                        Text("これで買う")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .foregroundColor(.white)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(canSubmitReason ? Color(hex: "E74C3C") : Color(.systemGray4))
+                            )
+                    }
+                    .disabled(!canSubmitReason)
+                    .padding(.horizontal)
+                    .animation(.easeInOut(duration: 0.2), value: canSubmitReason)
                 }
             }
-            .padding(.horizontal)
 
             Button("やっぱりやめる") {
                 onDismiss()
@@ -452,6 +510,7 @@ private struct BuyConfirmSheet: View {
             .padding(.bottom, 8)
         }
         .padding(.top, 24)
+        .onAppear { isReasonFocused = true }
     }
 }
 
@@ -459,6 +518,7 @@ private struct AffiliateLinkButton: View {
     let title: String
     let color: Color
     let icon: String
+    var disabled: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -476,6 +536,8 @@ private struct AffiliateLinkButton: View {
                     .fill(color)
             )
         }
+        .disabled(disabled)
+        .animation(.easeInOut(duration: 0.3), value: disabled)
     }
 }
 
