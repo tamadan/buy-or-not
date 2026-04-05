@@ -390,91 +390,110 @@ private struct BuyConfirmSheet: View {
     let product: Product?
     let onDismiss: () -> Void
     @Environment(\.openURL) private var openURL
+    @FocusState private var isReasonFocused: Bool
 
-    private let cooldownSeconds = 10
-    @State private var countdown: Int = 10
+    @State private var reason: String = ""
     @State private var canPurchase: Bool = false
-    @State private var timer: Timer? = nil
+
+    private var canSubmitReason: Bool {
+        reason.trimmingCharacters(in: .whitespacesAndNewlines).count >= 1
+    }
 
     var body: some View {
         VStack(spacing: 24) {
             IrukaCharacter(
                 mood: .pleading,
-                comment: canPurchase ? "…本当にいいの？" : "ほんとに買うの…？",
+                comment: canPurchase ? "…後悔しないでね" : "なんで欲しいの？",
                 size: 90
             )
 
             if canPurchase {
-                Text("イルカは止めたからね…")
-                    .font(.subheadline)
-                    .foregroundColor(Color(.secondaryLabel))
-            } else {
-                // カウントダウン表示
+                // 理由入力済み → 購入リンクを表示
                 VStack(spacing: 4) {
-                    Text("あと \(countdown) 秒、考えてみて")
+                    Text("「\(reason.trimmingCharacters(in: .whitespacesAndNewlines))」")
                         .font(.subheadline)
                         .fontWeight(.medium)
+                        .foregroundColor(Color(.label))
+                        .multilineTextAlignment(.center)
+                    Text("…わかった。イルカは止めたからね")
+                        .font(.caption)
                         .foregroundColor(Color(.secondaryLabel))
-                    // プログレスバー
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color(.systemGray5))
-                                .frame(height: 4)
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color(hex: "3498DB"))
-                                .frame(
-                                    width: geo.size.width * CGFloat(cooldownSeconds - countdown) / CGFloat(cooldownSeconds),
-                                    height: 4
-                                )
-                                .animation(.linear(duration: 1), value: countdown)
+                }
+                .padding(.horizontal)
+
+                VStack(spacing: 12) {
+                    AffiliateLinkButton(
+                        title: "Amazonで探す",
+                        color: Color(hex: "FF9900"),
+                        icon: "cart.fill"
+                    ) {
+                        guard let product else { return }
+                        let urlString: String
+                        if let url = product.amazonURL {
+                            urlString = url
+                        } else if let asin = product.amazonASIN {
+                            urlString = "https://www.amazon.co.jp/dp/\(asin)"
+                        } else {
+                            let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                            urlString = "https://www.amazon.co.jp/s?k=\(query)"
                         }
+                        if let url = URL(string: urlString) { openURL(url) }
                     }
-                    .frame(height: 4)
-                    .padding(.horizontal, 32)
+
+                    AffiliateLinkButton(
+                        title: "楽天で探す",
+                        color: Color(hex: "BF0000"),
+                        icon: "cart.fill"
+                    ) {
+                        guard let product else { return }
+                        let urlString: String
+                        if let url = product.rakutenURL {
+                            urlString = url
+                        } else if let code = product.rakutenItemCode {
+                            urlString = "https://item.rakuten.co.jp/\(code)/"
+                        } else {
+                            let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                            urlString = "https://search.rakuten.co.jp/search/mall/\(query)/"
+                        }
+                        if let url = URL(string: urlString) { openURL(url) }
+                    }
+                }
+                .padding(.horizontal)
+
+            } else {
+                // 理由入力フェーズ
+                VStack(spacing: 12) {
+                    Text("一言でいいので理由を教えて")
+                        .font(.caption)
+                        .foregroundColor(Color(.secondaryLabel))
+
+                    TextField("例：仕事で毎日使うから", text: $reason, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(2...4)
+                        .focused($isReasonFocused)
+                        .padding(.horizontal)
+
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                            canPurchase = true
+                            isReasonFocused = false
+                        }
+                    } label: {
+                        Text("これで買う")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .foregroundColor(.white)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(canSubmitReason ? Color(hex: "E74C3C") : Color(.systemGray4))
+                            )
+                    }
+                    .disabled(!canSubmitReason)
+                    .padding(.horizontal)
+                    .animation(.easeInOut(duration: 0.2), value: canSubmitReason)
                 }
             }
-
-            VStack(spacing: 12) {
-                AffiliateLinkButton(
-                    title: "Amazonで探す",
-                    color: canPurchase ? Color(hex: "FF9900") : Color(.systemGray4),
-                    icon: "cart.fill",
-                    disabled: !canPurchase
-                ) {
-                    guard let product else { return }
-                    let urlString: String
-                    if let url = product.amazonURL {
-                        urlString = url
-                    } else if let asin = product.amazonASIN {
-                        urlString = "https://www.amazon.co.jp/dp/\(asin)"
-                    } else {
-                        let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                        urlString = "https://www.amazon.co.jp/s?k=\(query)"
-                    }
-                    if let url = URL(string: urlString) { openURL(url) }
-                }
-
-                AffiliateLinkButton(
-                    title: "楽天で探す",
-                    color: canPurchase ? Color(hex: "BF0000") : Color(.systemGray4),
-                    icon: "cart.fill",
-                    disabled: !canPurchase
-                ) {
-                    guard let product else { return }
-                    let urlString: String
-                    if let url = product.rakutenURL {
-                        urlString = url
-                    } else if let code = product.rakutenItemCode {
-                        urlString = "https://item.rakuten.co.jp/\(code)/"
-                    } else {
-                        let query = product.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                        urlString = "https://search.rakuten.co.jp/search/mall/\(query)/"
-                    }
-                    if let url = URL(string: urlString) { openURL(url) }
-                }
-            }
-            .padding(.horizontal)
 
             Button("やっぱりやめる") {
                 onDismiss()
@@ -484,24 +503,7 @@ private struct BuyConfirmSheet: View {
             .padding(.bottom, 8)
         }
         .padding(.top, 24)
-        .onAppear { startCountdown() }
-        .onDisappear { timer?.invalidate() }
-    }
-
-    private func startCountdown() {
-        countdown = cooldownSeconds
-        canPurchase = false
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { t in
-            if countdown > 1 {
-                countdown -= 1
-            } else {
-                countdown = 0
-                canPurchase = true
-                t.invalidate()
-            }
-        }
-        if let timer { RunLoop.main.add(timer, forMode: .common) }
+        .onAppear { isReasonFocused = true }
     }
 }
 
