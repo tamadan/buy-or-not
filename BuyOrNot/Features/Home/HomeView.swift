@@ -17,7 +17,9 @@ struct HomeView: View {
     @State private var navigateToConfirm = false
     @State private var identifyError: String?
     @State private var stopBuyingComment: String = stopBuyingComments[0]
+    @State private var showPaywall = false
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
+    @EnvironmentObject private var premiumManager: PremiumManager
 
     var body: some View {
         ZStack {
@@ -83,6 +85,36 @@ struct HomeView: View {
                 }
             }
 
+            // 👑 プレミアムボタン（未加入時のみ表示）
+            if !premiumManager.isPremium {
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button {
+                            showPaywall = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("👑")
+                                    .font(.caption)
+                                Text("プレミアム")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(Color(hex: "4A90D9"))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color(hex: "4A90D9").opacity(0.12))
+                            )
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.top, 16)
+                    }
+                    Spacer()
+                }
+            }
+
             // 商品名識別中オーバーレイ
             if isIdentifying {
                 Color.black.opacity(0.5).ignoresSafeArea()
@@ -111,6 +143,10 @@ struct HomeView: View {
                 InputView()
             }
             .environmentObject(navigationCoordinator)
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .environmentObject(premiumManager)
         }
         .sheet(isPresented: $showTextInput) {
             TextInputSheet { input in
@@ -328,4 +364,5 @@ fileprivate struct TextInputSheet: View {
         HomeView()
     }
     .environmentObject(NavigationCoordinator())
+    .environmentObject(PremiumManager.shared)
 }
