@@ -20,7 +20,7 @@ final class PremiumManager: ObservableObject {
     /// プレミアム有効かどうか（UI の切り替えに使う）
     @Published private(set) var isPremium: Bool = false
     /// 購入可能なプロダクト情報（価格表示などに使う）
-    @Published private(set) var product: Product?
+    @Published private(set) var product: StoreKit.Product?
     /// 購入・復元中のローディング状態
     @Published private(set) var isLoading: Bool = false
 
@@ -48,7 +48,7 @@ final class PremiumManager: ObservableObject {
     /// App Store からプロダクト情報を取得する
     func loadProduct() async {
         do {
-            let products = try await Product.products(for: [Self.productID])
+            let products = try await StoreKit.Product.products(for: [Self.productID])
             product = products.first
         } catch {
             print("⚠️ [PremiumManager] プロダクト取得失敗: \(error)")
@@ -60,14 +60,14 @@ final class PremiumManager: ObservableObject {
     /// サブスクリプションを購入する
     /// - Throws: PremiumError.productNotFound / StoreKit エラー
     func purchase() async throws {
-        guard let product else { throw PremiumError.productNotFound }
+        guard let product: StoreKit.Product else { throw PremiumError.productNotFound }
         isLoading = true
         defer { isLoading = false }
 
         let result = try await product.purchase()
         switch result {
         case .success(let verification):
-            let transaction = try checkVerified(verification)
+            let transaction = try checkVerified(verification as VerificationResult<StoreKit.Transaction>)
             await refreshPremiumStatus()
             await transaction.finish()
         case .userCancelled:
@@ -111,7 +111,7 @@ final class PremiumManager: ObservableObject {
 
     /// 価格を「¥250/月」形式で返す
     var formattedPrice: String {
-        guard let product else { return "¥250/月" }
+        guard let product: StoreKit.Product else { return "¥250/月" }
         return "\(product.displayPrice)/月"
     }
 
