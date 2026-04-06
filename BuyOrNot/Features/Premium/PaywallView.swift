@@ -76,7 +76,7 @@ struct PaywallView: View {
                 .fontWeight(.black)
                 .foregroundColor(Color(.label))
 
-            Text("イルカがあなたのことを覚えて\nもっとするどく止めてくれる")
+            Text("広告なしで、あなたをよく知るイルカに")
                 .font(.subheadline)
                 .foregroundColor(Color(.secondaryLabel))
                 .multilineTextAlignment(.center)
@@ -206,14 +206,14 @@ private struct PremiumFeature: Identifiable {
             id: "ad",
             icon: "hand.raised.slash.fill",
             title: "広告を完全削除",
-            description: "すべての広告が非表示になります",
+            description: "判定のたびに表示される広告が完全になくなります",
             color: Color(hex: "E74C3C")
         ),
         PremiumFeature(
             id: "personalize",
             icon: "brain.head.profile",
-            title: "個人化判定",
-            description: "あなたの過去の傾向をもとにイルカが判定します",
+            title: "あなた専用の判定",
+            description: "同じカテゴリを何度もチェックする癖など、あなたのパターンを踏まえてよりするどく止めます",
             color: Color(hex: "9B59B6")
         ),
         PremiumFeature(
