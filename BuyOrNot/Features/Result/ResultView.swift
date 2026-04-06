@@ -160,13 +160,22 @@ private struct LoadingView: View {
                     .foregroundColor(Color(.secondaryLabel))
 
                 if showAdMessage {
-                    HStack(spacing: 6) {
-                        Image(systemName: "crown.fill")
-                            .font(.caption)
-                            .foregroundColor(Color(hex: "F5A623"))
-                        Text("プレミアムなら広告なしで何度でも使えるよ")
-                            .font(.caption)
-                            .foregroundColor(Color(.secondaryLabel))
+                    VStack(spacing: 6) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundColor(Color(hex: "4A90D9"))
+                            Text("広告なしで調べられるのは1日1回までだよ")
+                                .font(.caption)
+                                .foregroundColor(Color(.secondaryLabel))
+                        }
+                        HStack(spacing: 6) {
+                            Image(systemName: "crown.fill")
+                                .font(.caption)
+                                .foregroundColor(Color(hex: "F5A623"))
+                            Text("プレミアムなら広告なしで何度でも使えるよ")
+                                .font(.caption)
+                                .foregroundColor(Color(.secondaryLabel))
+                        }
                     }
                     .padding(.horizontal, 24)
                     .multilineTextAlignment(.center)
