@@ -3,9 +3,10 @@ import SwiftUI
 
 // MARK: - Shared Data Keys
 
-private let appGroupID  = "group.com.irukasore.app"
+private let appGroupID      = "group.com.irukasore.app"
 private let savedAmountKey  = "widget.savedAmount"
 private let stoppedCountKey = "widget.stoppedCount"
+private let isPremiumKey    = "widget.isPremium"
 
 // MARK: - Entry
 
@@ -13,6 +14,7 @@ struct IrukaEntry: TimelineEntry {
     let date: Date
     let savedAmount: Int
     let stoppedCount: Int
+    let isPremium: Bool
 }
 
 // MARK: - Provider
@@ -20,7 +22,7 @@ struct IrukaEntry: TimelineEntry {
 struct IrukaProvider: TimelineProvider {
 
     func placeholder(in context: Context) -> IrukaEntry {
-        IrukaEntry(date: .now, savedAmount: 12800, stoppedCount: 5)
+        IrukaEntry(date: .now, savedAmount: 12800, stoppedCount: 5, isPremium: true)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (IrukaEntry) -> Void) {
@@ -39,7 +41,8 @@ struct IrukaProvider: TimelineProvider {
         let defaults = UserDefaults(suiteName: appGroupID)
         let savedAmount  = defaults?.integer(forKey: savedAmountKey)  ?? 0
         let stoppedCount = defaults?.integer(forKey: stoppedCountKey) ?? 0
-        return IrukaEntry(date: .now, savedAmount: savedAmount, stoppedCount: stoppedCount)
+        let isPremium    = defaults?.bool(forKey: isPremiumKey)        ?? false
+        return IrukaEntry(date: .now, savedAmount: savedAmount, stoppedCount: stoppedCount, isPremium: isPremium)
     }
 }
 
@@ -50,14 +53,37 @@ struct BuyOrNotWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            SmallWidgetView(entry: entry)
-        case .systemMedium:
-            MediumWidgetView(entry: entry)
-        default:
-            SmallWidgetView(entry: entry)
+        if entry.isPremium {
+            switch family {
+            case .systemSmall:
+                SmallWidgetView(entry: entry)
+            case .systemMedium:
+                MediumWidgetView(entry: entry)
+            default:
+                SmallWidgetView(entry: entry)
+            }
+        } else {
+            LockedWidgetView()
         }
+    }
+}
+
+// MARK: Locked（非プレミアム）
+
+private struct LockedWidgetView: View {
+    var body: some View {
+        VStack(spacing: 6) {
+            Text("🐬")
+                .font(.system(size: 32))
+            Text("👑")
+                .font(.system(size: 14))
+                .offset(y: -8)
+            Text("プレミアム限定")
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -176,11 +202,12 @@ struct BuyOrNotWidget: Widget {
 #Preview(as: .systemSmall) {
     BuyOrNotWidget()
 } timeline: {
-    IrukaEntry(date: .now, savedAmount: 12800, stoppedCount: 5)
+    IrukaEntry(date: .now, savedAmount: 12800, stoppedCount: 5, isPremium: true)
+    IrukaEntry(date: .now, savedAmount: 0,     stoppedCount: 0, isPremium: false)
 }
 
 #Preview(as: .systemMedium) {
     BuyOrNotWidget()
 } timeline: {
-    IrukaEntry(date: .now, savedAmount: 12800, stoppedCount: 5)
+    IrukaEntry(date: .now, savedAmount: 12800, stoppedCount: 5, isPremium: true)
 }

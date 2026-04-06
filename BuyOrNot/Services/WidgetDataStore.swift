@@ -7,14 +7,15 @@ struct WidgetDataStore {
 
     static let appGroupID = "group.com.irukasore.app"
 
-    private enum Key {
+    enum Key {
         static let savedAmount  = "widget.savedAmount"
         static let stoppedCount = "widget.stoppedCount"
+        static let isPremium    = "widget.isPremium"
         static let updatedAt    = "widget.updatedAt"
     }
 
-    /// 履歴から今月の集計を計算して App Group に保存し、ウィジェットを更新する
-    static func update(history: [JudgementHistory]) {
+    /// 履歴・プレミアム状態を App Group に保存し、ウィジェットを更新する
+    static func update(history: [JudgementHistory], isPremium: Bool) {
         let calendar = Calendar.current
         let now = Date()
         let thisMonth = calendar.dateComponents([.year, .month], from: now)
@@ -30,6 +31,7 @@ struct WidgetDataStore {
         let defaults = UserDefaults(suiteName: appGroupID)
         defaults?.set(savedAmount,  forKey: Key.savedAmount)
         defaults?.set(stoppedCount, forKey: Key.stoppedCount)
+        defaults?.set(isPremium,    forKey: Key.isPremium)
         defaults?.set(now,          forKey: Key.updatedAt)
 
         WidgetCenter.shared.reloadAllTimelines()

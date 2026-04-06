@@ -6,6 +6,7 @@ import SwiftData
 struct HistoryView: View {
     @Query(sort: \JudgementHistory.date, order: .reverse) private var histories: [JudgementHistory]
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var premiumManager: PremiumManager
 
     // MARK: Computed
 
@@ -69,10 +70,10 @@ struct HistoryView: View {
             .navigationTitle("履歴")
             .navigationBarTitleDisplayMode(.large)
             .onChange(of: histories) { _, newHistories in
-                WidgetDataStore.update(history: newHistories)
+                WidgetDataStore.update(history: newHistories, isPremium: premiumManager.isPremium)
             }
             .onAppear {
-                WidgetDataStore.update(history: histories)
+                WidgetDataStore.update(history: histories, isPremium: premiumManager.isPremium)
             }
         }
     }
@@ -276,4 +277,5 @@ private struct EmptyHistoryView: View {
 #Preview {
     HistoryView()
         .modelContainer(for: JudgementHistory.self, inMemory: true)
+        .environmentObject(PremiumManager.shared)
 }
