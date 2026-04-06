@@ -68,6 +68,12 @@ struct HistoryView: View {
             }
             .navigationTitle("履歴")
             .navigationBarTitleDisplayMode(.large)
+            .onChange(of: histories) { _, newHistories in
+                WidgetDataStore.update(history: newHistories)
+            }
+            .onAppear {
+                WidgetDataStore.update(history: histories)
+            }
         }
     }
 
