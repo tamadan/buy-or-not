@@ -133,7 +133,7 @@ struct PaywallView: View {
                 Task { await doPurchase() }
             } label: {
                 ZStack {
-                    if premiumManager.isLoading {
+                    if premiumManager.isLoading || premiumManager.isLoadingProduct {
                         ProgressView().tint(.white)
                     } else {
                         Text("\(premiumManager.formattedPrice) で始める")
@@ -153,7 +153,18 @@ struct PaywallView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .shadow(color: Color(hex: "4A90D9").opacity(0.4), radius: 8, y: 4)
             }
-            .disabled(premiumManager.isLoading)
+            .disabled(premiumManager.isLoading || premiumManager.isLoadingProduct)
+
+            // プロダクト取得失敗時のリトライ
+            if !premiumManager.isLoadingProduct && premiumManager.product == nil {
+                Button {
+                    Task { await premiumManager.loadProduct() }
+                } label: {
+                    Label("再読み込み", systemImage: "arrow.clockwise")
+                        .font(.caption)
+                        .foregroundColor(Color(hex: "4A90D9"))
+                }
+            }
 
             // 復元ボタン
             Button {
@@ -163,7 +174,7 @@ struct PaywallView: View {
                     .font(.subheadline)
                     .foregroundColor(Color(.secondaryLabel))
             }
-            .disabled(premiumManager.isLoading)
+            .disabled(premiumManager.isLoading || premiumManager.isLoadingProduct)
 
             // 注記
             Text("いつでもキャンセル可能。\nキャンセルしない限り自動更新されます。")

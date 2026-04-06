@@ -23,6 +23,8 @@ final class PremiumManager: ObservableObject {
     @Published private(set) var product: StoreKit.Product?
     /// 購入・復元中のローディング状態
     @Published private(set) var isLoading: Bool = false
+    /// プロダクト情報取得中かどうか
+    @Published private(set) var isLoadingProduct: Bool = false
 
     // MARK: - Private
 
@@ -45,13 +47,27 @@ final class PremiumManager: ObservableObject {
 
     // MARK: - Load Product
 
-    /// App Store からプロダクト情報を取得する
+    /// App Store からプロダクト情報を取得する（最大3回リトライ）
     func loadProduct() async {
-        do {
-            let products = try await StoreKit.Product.products(for: [Self.productID])
-            product = products.first
-        } catch {
-            print("⚠️ [PremiumManager] プロダクト取得失敗: \(error)")
+        isLoadingProduct = true
+        defer { isLoadingProduct = false }
+
+        for attempt in 1...3 {
+            do {
+                let products = try await StoreKit.Product.products(for: [Self.productID])
+                if let first = products.first {
+                    product = first
+                    print("✅ [PremiumManager] プロダクト取得成功: \(first.displayName)")
+                    return
+                }
+                print("⚠️ [PremiumManager] 試行\(attempt): プロダクトが空でした (ID: \(Self.productID))")
+            } catch {
+                print("⚠️ [PremiumManager] 試行\(attempt): 取得失敗 \(error)")
+            }
+            // 次の試行まで少し待つ
+            if attempt < 3 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
         }
     }
 
