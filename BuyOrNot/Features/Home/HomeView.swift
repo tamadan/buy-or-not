@@ -107,38 +107,31 @@ struct HomeView: View {
                 }
             }
         }
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .onAppear {
-            let appearance = UINavigationBarAppearance()
-            appearance.configureWithTransparentBackground()
-            UINavigationBar.appearance().standardAppearance = appearance
-            UINavigationBar.appearance().scrollEdgeAppearance = appearance
-        }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                if !premiumManager.isPremium {
-                    Button {
-                        showPaywall = true
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "crown.fill")
-                                .font(.caption)
-                                .foregroundColor(Color(hex: "F5A623"))
-                            Text("プレミアム")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(Color(hex: "4A90D9"))
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(
-                            Capsule()
-                                .fill(Color(hex: "4A90D9").opacity(0.1))
-                        )
+        .navigationBarHidden(true)
+        .safeAreaInset(edge: .top, alignment: .trailing, spacing: 0) {
+            if !premiumManager.isPremium {
+                Button {
+                    showPaywall = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "crown.fill")
+                            .font(.caption)
+                            .foregroundColor(Color(hex: "F5A623"))
+                        Text("プレミアム")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(Color(hex: "4A90D9"))
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color(hex: "4A90D9").opacity(0.1))
+                    )
                 }
+                .padding(.trailing, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
             }
         }
         .fullScreenCover(isPresented: $showCamera) {
