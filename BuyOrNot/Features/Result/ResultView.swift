@@ -77,6 +77,12 @@ struct ResultView: View {
                         .padding(.horizontal)
                         .padding(.top, 8)
 
+                        // リマインダー（プレミアムのみ）
+                        if premiumManager.isPremium, let product = viewModel.product {
+                            ReminderSection(productName: product.name)
+                                .padding(.top, 4)
+                        }
+
                         // 「それでも買う」ボタン
                         BuyAnywayButton(showConfirm: $showBuyConfirm)
                             .padding(.top, 4)
@@ -412,6 +418,115 @@ private struct SuggestionCard: View {
                 .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
         )
         .padding(.horizontal)
+    }
+}
+
+// MARK: - Reminder Section
+
+private struct ReminderSection: View {
+    let productName: String
+
+    @State private var daysText: String = ""
+    @State private var isScheduling = false
+    @State private var isScheduled = false
+    @State private var showPermissionAlert = false
+    @FocusState private var isFocused: Bool
+
+    private var days: Int? {
+        guard let n = Int(daysText), n > 0 else { return nil }
+        return n
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+                .padding(.bottom, 12)
+
+            HStack(spacing: 8) {
+                Image(systemName: "bell.badge.fill")
+                    .foregroundColor(Color(hex: "F39C12"))
+                Text("何日後にリマインドする？")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(Color(.label))
+                Spacer()
+            }
+            .padding(.horizontal)
+
+            HStack(spacing: 8) {
+                TextField("3", text: $daysText)
+                    .keyboardType(.numberPad)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 64)
+                    .focused($isFocused)
+                    .onChange(of: daysText) { _, new in
+                        // 数字以外を除去、3桁まで
+                        let filtered = new.filter { $0.isNumber }
+                        daysText = String(filtered.prefix(3))
+                    }
+
+                Text("日後")
+                    .font(.subheadline)
+                    .foregroundColor(Color(.label))
+
+                Spacer()
+
+                Button {
+                    isFocused = false
+                    Task { await schedule() }
+                } label: {
+                    Group {
+                        if isScheduling {
+                            ProgressView().tint(.white).scaleEffect(0.8)
+                        } else if isScheduled {
+                            Label("セット済み", systemImage: "checkmark")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        } else {
+                            Text("セットする")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(isScheduled ? Color(hex: "2ECC71") : Color(hex: "F39C12"))
+                    )
+                }
+                .disabled(days == nil || isScheduling || isScheduled)
+                .animation(.easeInOut(duration: 0.2), value: isScheduled)
+            }
+            .padding(.horizontal)
+            .padding(.top, 8)
+        }
+        .alert("通知が許可されていません", isPresented: $showPermissionAlert) {
+            Button("設定を開く") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("設定 → 通知 からイルカソレの通知を許可してください")
+        }
+    }
+
+    private func schedule() async {
+        guard let days else { return }
+        isScheduling = true
+        let success = await ReminderManager.shared.scheduleReminder(
+            for: productName,
+            afterDays: days
+        )
+        isScheduling = false
+        if success {
+            withAnimation { isScheduled = true }
+        } else {
+            showPermissionAlert = true
+        }
     }
 }
 

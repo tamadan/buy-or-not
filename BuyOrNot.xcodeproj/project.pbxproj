@@ -33,6 +33,7 @@
 		A100001E /* PremiumManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100001E /* PremiumManager.swift */; };
 		A1000020 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020 /* PaywallView.swift */; };
 		A1000021 /* PersonalizationContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000021 /* PersonalizationContext.swift */; };
+		A1000022 /* ReminderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000022 /* ReminderManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,6 +62,7 @@
 		B100001E /* PremiumManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumManager.swift; sourceTree = "<group>"; };
 		B1000020 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		B1000021 /* PersonalizationContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalizationContext.swift; sourceTree = "<group>"; };
+		B1000022 /* ReminderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderManager.swift; sourceTree = "<group>"; };
 		B100001F /* BuyOrNot.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = BuyOrNot.storekit; sourceTree = "<group>"; };
 		C1000001 /* BuyOrNot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuyOrNot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -184,6 +186,7 @@
 				B1000010 /* ClaudeService.swift */,
 				B1000021 /* PersonalizationContext.swift */,
 				B100001E /* PremiumManager.swift */,
+				B1000022 /* ReminderManager.swift */,
 				B1000017 /* TavilyService.swift */,
 			);
 			path = Services;
@@ -338,6 +341,7 @@
 				A100001E /* PremiumManager.swift in Sources */,
 				A1000020 /* PaywallView.swift in Sources */,
 				A1000021 /* PersonalizationContext.swift in Sources */,
+				A1000022 /* ReminderManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
