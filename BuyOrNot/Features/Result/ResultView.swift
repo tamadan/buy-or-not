@@ -8,6 +8,7 @@ struct ResultView: View {
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
     @EnvironmentObject private var premiumManager: PremiumManager
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \JudgementHistory.date, order: .reverse) private var history: [JudgementHistory]
     @State private var historyItem: JudgementHistory?
     let adWasShown: Bool
 
@@ -93,6 +94,12 @@ struct ResultView: View {
                     .padding(.vertical)
                 }
             }
+        }
+        .task {
+            await viewModel.startLoading(
+                history: history,
+                isPremium: premiumManager.isPremium
+            )
         }
         .navigationTitle("イルカソレ")
         .navigationBarTitleDisplayMode(.inline)

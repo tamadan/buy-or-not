@@ -254,7 +254,7 @@ final class ClaudeService {
 
     // MARK: - 判定: 買わない理由を生成
 
-    func judgeProduct(product: Product, searchResults: [String]) async throws -> (judgement: Judgement, currentPrice: Int?) {
+    func judgeProduct(product: Product, searchResults: [String], personalizationContext: String? = nil) async throws -> (judgement: Judgement, currentPrice: Int?) {
         if useMock {
             try await Task.sleep(nanoseconds: 1_500_000_000)
             return (mockJudgement(product: product), nil)
@@ -340,6 +340,7 @@ final class ClaudeService {
           "waitSuggestion": "次のセールまで待てば5,000円くらい安くなるかも"
         }
 
+        \(personalizationContext ?? "")
         ## 商品情報
         \(productInfo)
 
