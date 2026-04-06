@@ -172,7 +172,7 @@ private struct LoadingView: View {
                             Image(systemName: "crown.fill")
                                 .font(.caption)
                                 .foregroundColor(Color(hex: "F5A623"))
-                            Text("プレミアムなら広告なしで何度でも使えるよ")
+                            Text("プレミアムなら毎回の広告が完全になくなるよ")
                                 .font(.caption)
                                 .foregroundColor(Color(.secondaryLabel))
                         }
@@ -424,7 +424,7 @@ private struct PremiumCTABanner: View {
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(Color(.label))
-                    Text("プレミアムプランで毎日何度でも")
+                    Text("毎回の広告を完全になくす")
                         .font(.caption)
                         .foregroundColor(Color(.secondaryLabel))
                 }
