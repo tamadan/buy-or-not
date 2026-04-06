@@ -85,36 +85,6 @@ struct HomeView: View {
                 }
             }
 
-            // 👑 プレミアムボタン（未加入時のみ表示）
-            if !premiumManager.isPremium {
-                VStack {
-                    HStack {
-                        Spacer()
-                        Button {
-                            showPaywall = true
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text("👑")
-                                    .font(.caption)
-                                Text("プレミアム")
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(Color(hex: "4A90D9"))
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                Capsule()
-                                    .fill(Color(hex: "4A90D9").opacity(0.12))
-                            )
-                        }
-                        .padding(.trailing, 16)
-                        .padding(.top, 16)
-                    }
-                    Spacer()
-                }
-            }
-
             // 商品名識別中オーバーレイ
             if isIdentifying {
                 Color.black.opacity(0.5).ignoresSafeArea()
@@ -137,7 +107,33 @@ struct HomeView: View {
                 }
             }
         }
-        .navigationBarHidden(true)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if !premiumManager.isPremium {
+                    Button {
+                        showPaywall = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "crown.fill")
+                                .font(.caption)
+                                .foregroundColor(Color(hex: "F5A623"))
+                            Text("プレミアム")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color(hex: "4A90D9"))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(
+                            Capsule()
+                                .fill(Color(hex: "4A90D9").opacity(0.1))
+                        )
+                    }
+                }
+            }
+        }
         .fullScreenCover(isPresented: $showCamera) {
             NavigationStack {
                 InputView()
