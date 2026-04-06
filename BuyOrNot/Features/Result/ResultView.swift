@@ -4,7 +4,9 @@ import SwiftData
 struct ResultView: View {
     @StateObject private var viewModel: ResultViewModel
     @State private var showBuyConfirm = false
+    @State private var showPaywall = false
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
+    @EnvironmentObject private var premiumManager: PremiumManager
     @Environment(\.modelContext) private var modelContext
     @State private var historyItem: JudgementHistory?
     let adWasShown: Bool
@@ -78,6 +80,14 @@ struct ResultView: View {
                         BuyAnywayButton(showConfirm: $showBuyConfirm)
                             .padding(.top, 4)
 
+                        // プレミアムCTAバナー（広告が表示された未加入ユーザーにのみ表示）
+                        if adWasShown && !premiumManager.isPremium {
+                            PremiumCTABanner {
+                                showPaywall = true
+                            }
+                            .padding(.top, 8)
+                        }
+
                         Spacer(minLength: 40)
                     }
                     .padding(.vertical)
@@ -86,6 +96,10 @@ struct ResultView: View {
         }
         .navigationTitle("イルカソレ")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .environmentObject(premiumManager)
+        }
         .sheet(isPresented: $showBuyConfirm) {
             BuyConfirmSheet(
                 product: viewModel.product,
@@ -147,9 +161,10 @@ private struct LoadingView: View {
 
                 if showAdMessage {
                     HStack(spacing: 6) {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundColor(Color(hex: "4A90D9"))
-                        Text("広告なしで調べられるのは1日1回までだよ")
+                        Image(systemName: "crown.fill")
+                            .font(.caption)
+                            .foregroundColor(Color(hex: "F5A623"))
+                        Text("プレミアムなら広告なしで何度でも使えるよ")
                             .font(.caption)
                             .foregroundColor(Color(.secondaryLabel))
                     }
@@ -384,6 +399,47 @@ private struct SuggestionCard: View {
     }
 }
 
+// MARK: - Premium CTA Banner
+
+private struct PremiumCTABanner: View {
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Text("👑")
+                    .font(.title3)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("広告なしで使いたいですか？")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(Color(.label))
+                    Text("プレミアムプランで毎日何度でも")
+                        .font(.caption)
+                        .foregroundColor(Color(.secondaryLabel))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(hex: "F5A623").opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .strokeBorder(Color(hex: "F5A623").opacity(0.3), lineWidth: 1)
+                    )
+            )
+        }
+        .padding(.horizontal)
+    }
+}
+
 // MARK: - Buy Anyway Button
 
 private struct BuyAnywayButton: View {
@@ -581,8 +637,9 @@ private struct AffiliateLinkButton: View {
 
 #Preview {
     NavigationStack {
-        ResultView()
+        ResultView(adWasShown: true)
     }
     .environmentObject(NavigationCoordinator())
+    .environmentObject(PremiumManager.shared)
     .modelContainer(for: JudgementHistory.self, inMemory: true)
 }
