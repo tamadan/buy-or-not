@@ -14,6 +14,13 @@ struct WidgetDataStore {
         static let updatedAt    = "widget.updatedAt"
     }
 
+    /// プレミアム状態だけを即時更新する（購入・復元後に呼ぶ）
+    static func updatePremiumStatus(_ isPremium: Bool) {
+        let defaults = UserDefaults(suiteName: appGroupID)
+        defaults?.set(isPremium, forKey: Key.isPremium)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
     /// 履歴・プレミアム状態を App Group に保存し、ウィジェットを更新する
     static func update(history: [JudgementHistory], isPremium: Bool) {
         let calendar = Calendar.current

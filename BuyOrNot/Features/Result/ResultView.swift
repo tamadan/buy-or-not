@@ -445,7 +445,7 @@ private struct ReminderSection: View {
             HStack(spacing: 8) {
                 Image(systemName: "bell.badge.fill")
                     .foregroundColor(Color(hex: "F39C12"))
-                Text("何日後にリマインドする？")
+                Text("少し時間をあけて考えてみる？")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundColor(Color(.label))
@@ -479,11 +479,11 @@ private struct ReminderSection: View {
                         if isScheduling {
                             ProgressView().tint(.white).scaleEffect(0.8)
                         } else if isScheduled {
-                            Label("セット済み", systemImage: "checkmark")
+                            Label("リマインド済み", systemImage: "checkmark")
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                         } else {
-                            Text("セットする")
+                            Text("リマインドする")
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                         }

@@ -5,6 +5,13 @@ import SwiftUI
 
 /// サブスクリプション状態を管理するシングルトン
 /// StoreKit2 を使用。Transaction.currentEntitlements で常に最新状態を保証する
+///
+/// ⚠️ 型衝突メモ:
+///   アプリ独自の `Product` モデルと `StoreKit.Product` が同名のため、
+///   このファイル内では StoreKit.Product を必ず明示修飾して使用する。
+///   プロパティアクセスも混同しないよう注意:
+///     StoreKit.Product   → .id          (プロダクトID)
+///     StoreKit.Transaction → .productID  (プロダクトID)
 @MainActor
 final class PremiumManager: ObservableObject {
 
@@ -33,6 +40,11 @@ final class PremiumManager: ObservableObject {
     // MARK: - Init
 
     private init() {
+        SKLog.info("=== PremiumManager 初期化開始 ===")
+        SKLog.info("対象プロダクトID: \(Self.productID)")
+        let simName = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] ?? ""
+        SKLog.info("実行環境: \(simName.isEmpty ? "Real Device" : "Simulator (\(simName))")")
+
         // バックグラウンドでトランザクション更新を監視
         transactionListenerTask = listenForTransactions()
         Task {
@@ -49,26 +61,134 @@ final class PremiumManager: ObservableObject {
 
     /// App Store からプロダクト情報を取得する（最大3回リトライ）
     func loadProduct() async {
+        SKLog.info("--- loadProduct() 開始 ---")
         isLoadingProduct = true
-        defer { isLoadingProduct = false }
+        defer {
+            isLoadingProduct = false
+            // StoreKit.Product.id がプロダクトID（.productID ではない）
+            let loadedID = product?.id ?? "nil"
+            SKLog.info("--- loadProduct() 終了 (product.id: \(loadedID)) ---")
+        }
 
-        for attempt in 1...3 {
-            do {
-                let products = try await StoreKit.Product.products(for: [Self.productID])
-                if let first = products.first {
-                    product = first
-                    print("✅ [PremiumManager] プロダクト取得成功: \(first.displayName)")
-                    return
-                }
-                print("⚠️ [PremiumManager] 試行\(attempt): プロダクトが空でした (ID: \(Self.productID))")
-            } catch {
-                print("⚠️ [PremiumManager] 試行\(attempt): 取得失敗 \(error)")
-            }
-            // 次の試行まで少し待つ
-            if attempt < 3 {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+        // ── 診断①: 実行環境の詳細 ──────────────────────────────
+        let env = ProcessInfo.processInfo.environment
+        SKLog.info("[診断①] 実行環境")
+        SKLog.info("  isSimulator: \(env["SIMULATOR_DEVICE_NAME"] != nil)")
+        SKLog.info("  SIMULATOR_DEVICE_NAME: \(env["SIMULATOR_DEVICE_NAME"] ?? "nil")")
+        SKLog.info("  SIMULATOR_OS_VERSION: \(env["SIMULATOR_OS_VERSION"] ?? "nil")")
+        SKLog.info("  SIMULATOR_RUNTIME_VERSION: \(env["SIMULATOR_RUNTIME_VERSION"] ?? "nil")")
+
+        // ── 診断②: レシートURL（Sandbox か Local Testing かの判別） ──
+        // ローカルテスト時はパスに "LocalTesting" が含まれる
+        SKLog.info("[診断②] レシートURL")
+        let receiptURL = Bundle.main.appStoreReceiptURL
+        SKLog.info("  appStoreReceiptURL: \(receiptURL?.path ?? "nil")")
+        if let path = receiptURL?.path {
+            if path.contains("sandboxReceipt") {
+                SKLog.warn("  → Sandbox モード (.storekit ファイルが無視されている)")
+                SKLog.warn("    対処: Edit Scheme > Run > Options > StoreKit Configuration を確認")
+            } else if path.contains("LocalTesting") || path.contains("storekit") {
+                SKLog.info("  → StoreKit Local Testing モード ✅ (.storekit ファイルが有効)")
+            } else {
+                SKLog.warn("  → 判別不明なパス: \(path)")
             }
         }
+
+        // ── 診断③: Storefront（どのストアに接続しているか） ────────
+        SKLog.info("[診断③] Storefront")
+        if let storefront = await Storefront.current {
+            SKLog.info("  countryCode: \(storefront.countryCode)")
+            SKLog.info("  id: \(storefront.id)")
+        } else {
+            SKLog.warn("  Storefront.current = nil (StoreKit サービスに到達できていない可能性)")
+        }
+
+        // ── 診断④: 既存トランザクション全件確認 ─────────────────
+        SKLog.info("[診断④] Transaction.all (既存トランザクション)")
+        var txCount = 0
+        for await result in Transaction.all {
+            txCount += 1
+            switch result {
+            case .verified(let tx):
+                // Transaction.productID は正しいプロパティ名
+                SKLog.info("  TX[\(txCount)] verified: \(tx.productID), date=\(tx.purchaseDate)")
+            case .unverified(let tx, let err):
+                SKLog.warn("  TX[\(txCount)] unverified: \(tx.productID), err=\(err)")
+            }
+        }
+        if txCount == 0 { SKLog.info("  トランザクション: 0件") }
+
+        // ── 診断⑤: ProductID のバイト列確認（不可視文字・エンコード混入チェック） ─
+        SKLog.info("[診断⑤] ProductID バイト列確認")
+        let pid = Self.productID
+        SKLog.info("  productID: '\(pid)'")
+        SKLog.info("  文字数: \(pid.count)")
+        SKLog.info("  UTF8: \(pid.utf8.map { String(format: "%02X", $0) }.joined(separator: " "))")
+
+        // ── プロダクト取得ループ ──────────────────────────────────
+        for attempt in 1...3 {
+            SKLog.info("試行 \(attempt)/3: StoreKit.Product.products(for:) を呼び出し中...")
+            do {
+                let products: [StoreKit.Product] = try await StoreKit.Product.products(for: [Self.productID])
+
+                SKLog.info("試行 \(attempt)/3: レスポンス受信 - 件数: \(products.count)")
+                if products.isEmpty {
+                    SKLog.warn("試行 \(attempt)/3: 空配列が返却されました")
+                    SKLog.warn("  考えられる原因:")
+                    SKLog.warn("  A) Edit Scheme > Run > Options > StoreKit Configuration が未設定")
+                    SKLog.warn("  B) .storekit ファイルのパスが Xcode から解決できていない")
+                    SKLog.warn("  C) Product ID が .storekit ファイルと不一致")
+                    SKLog.warn("  D) シミュレーターの StoreKit デーモンが壊れている → Erase All Content")
+                    SKLog.warn("  E) Xcode の Derived Data が古い → Product > Clean Build Folder")
+                }
+
+                for p in products {
+                    // StoreKit.Product のプロダクトIDは .id（.productID ではない）
+                    SKLog.info("  プロダクト: id=\(p.id), name=\(p.displayName), price=\(p.displayPrice), type=\(p.type)")
+                }
+
+                if let first = products.first {
+                    product = first
+                    SKLog.info("✅ プロダクト取得成功: \(first.displayName) (\(first.displayPrice))")
+                    return
+                }
+
+            } catch let skError as StoreKitError {
+                SKLog.error("試行 \(attempt)/3: StoreKitError = \(skError)")
+                SKLog.error("  localizedDescription: \(skError.localizedDescription)")
+                switch skError {
+                case .unknown:
+                    SKLog.error("  → unknown エラー")
+                case .userCancelled:
+                    SKLog.error("  → ユーザーキャンセル")
+                case .networkError(let e):
+                    SKLog.error("  → ネットワークエラー: \(e)")
+                case .systemError(let e):
+                    SKLog.error("  → システムエラー: \(e)")
+                case .notAvailableInStorefront:
+                    SKLog.error("  → このストアフロントでは利用不可")
+                case .notEntitled:
+                    SKLog.error("  → エンタイトルメントなし")
+                default:
+                    SKLog.error("  → その他: \(skError)")
+                }
+            } catch {
+                SKLog.error("試行 \(attempt)/3: 予期しないエラー")
+                SKLog.error("  type: \(type(of: error))")
+                SKLog.error("  description: \(error)")
+                SKLog.error("  localizedDescription: \(error.localizedDescription)")
+                let nsError = error as NSError
+                SKLog.error("  NSError domain: \(nsError.domain), code: \(nsError.code)")
+                SKLog.error("  userInfo: \(nsError.userInfo)")
+            }
+
+            if attempt < 3 {
+                SKLog.info("3秒後に再試行します...")
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+            }
+        }
+
+        SKLog.error("❌ 全試行失敗: プロダクトを取得できませんでした")
     }
 
     // MARK: - Purchase
@@ -76,23 +196,33 @@ final class PremiumManager: ObservableObject {
     /// サブスクリプションを購入する
     /// - Throws: PremiumError.productNotFound / StoreKit エラー
     func purchase() async throws {
-        guard let product: StoreKit.Product else { throw PremiumError.productNotFound }
+        SKLog.info("--- purchase() 開始 ---")
+        guard let skProduct: StoreKit.Product = product else {
+            SKLog.error("purchase() 失敗: product が nil")
+            throw PremiumError.productNotFound
+        }
+        SKLog.info("購入対象: \(skProduct.id)")
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            SKLog.info("--- purchase() 終了 ---")
+        }
 
-        let result = try await product.purchase()
+        let result = try await skProduct.purchase()
+        SKLog.info("purchase() 結果: \(result)")
         switch result {
         case .success(let verification):
+            SKLog.info("purchase() success - 検証中...")
             let transaction = try checkVerified(verification as VerificationResult<StoreKit.Transaction>)
+            SKLog.info("検証完了: transactionID=\(transaction.id), productID=\(transaction.productID)")
             await refreshPremiumStatus()
             await transaction.finish()
         case .userCancelled:
-            break
+            SKLog.info("purchase() userCancelled")
         case .pending:
-            // 保護者の承認待ちなど。ステータスは Transaction.updates で後から通知される
-            break
+            SKLog.info("purchase() pending (保護者承認待ちなど)")
         @unknown default:
-            break
+            SKLog.warn("purchase() unknown result")
         }
     }
 
@@ -100,10 +230,19 @@ final class PremiumManager: ObservableObject {
 
     /// 過去の購入を復元する
     func restore() async {
+        SKLog.info("--- restore() 開始 ---")
         isLoading = true
-        defer { isLoading = false }
-        // App Store と同期して最新のエンタイトルメントを取得
-        try? await AppStore.sync()
+        defer {
+            isLoading = false
+            SKLog.info("--- restore() 終了 (isPremium: \(self.isPremium)) ---")
+        }
+        SKLog.info("AppStore.sync() を呼び出し中...")
+        do {
+            try await AppStore.sync()
+            SKLog.info("AppStore.sync() 完了")
+        } catch {
+            SKLog.error("AppStore.sync() エラー: \(error)")
+        }
         await refreshPremiumStatus()
     }
 
@@ -111,24 +250,39 @@ final class PremiumManager: ObservableObject {
 
     /// 現在のエンタイトルメントを確認して isPremium を更新する
     func refreshPremiumStatus() async {
+        SKLog.info("--- refreshPremiumStatus() 開始 ---")
         var hasActive = false
+        var entitlementCount = 0
         for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result else { continue }
-            if transaction.productID == Self.productID,
-               transaction.revocationDate == nil {
-                hasActive = true
-                break
+            entitlementCount += 1
+            switch result {
+            case .verified(let transaction):
+                SKLog.info("エンタイトルメント[\(entitlementCount)]: productID=\(transaction.productID), revocationDate=\(String(describing: transaction.revocationDate))")
+                if transaction.productID == Self.productID,
+                   transaction.revocationDate == nil {
+                    hasActive = true
+                    SKLog.info("  → プレミアム有効と判定")
+                }
+            case .unverified(let transaction, let error):
+                SKLog.warn("エンタイトルメント[\(entitlementCount)]: 未検証 productID=\(transaction.productID), error=\(error)")
             }
         }
+        if entitlementCount == 0 {
+            SKLog.info("エンタイトルメント: 0件 (購入履歴なし)")
+        }
         isPremium = hasActive
+        SKLog.info("isPremium = \(isPremium)")
+        // ウィジェットにも即時反映する
+        WidgetDataStore.updatePremiumStatus(hasActive)
+        SKLog.info("--- refreshPremiumStatus() 終了 ---")
     }
 
     // MARK: - Formatted Price
 
     /// 価格を「¥250/月」形式で返す
     var formattedPrice: String {
-        guard let product: StoreKit.Product else { return "¥250/月" }
-        return "\(product.displayPrice)/月"
+        guard let p: StoreKit.Product = product else { return "¥250/月" }
+        return "\(p.displayPrice)/月"
     }
 
     // MARK: - Private Helpers
@@ -136,9 +290,12 @@ final class PremiumManager: ObservableObject {
     /// トランザクション更新をリアルタイムで監視する（解約・更新など）
     private func listenForTransactions() -> Task<Void, Error> {
         Task.detached { [weak self] in
+            SKLog.info("Transaction.updates 監視開始")
             for await result in Transaction.updates {
                 guard let self else { return }
+                SKLog.info("Transaction.updates: 新しいトランザクション受信")
                 if case .verified(let transaction) = result {
+                    SKLog.info("  verified: \(transaction.productID)")
                     await self.refreshPremiumStatus()
                     await transaction.finish()
                 }
@@ -149,11 +306,26 @@ final class PremiumManager: ObservableObject {
     /// StoreKit の検証結果を確認する
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
-        case .unverified:
+        case .unverified(_, let error):
+            SKLog.error("checkVerified: 検証失敗 \(error)")
             throw PremiumError.failedVerification
         case .verified(let value):
             return value
         }
+    }
+}
+
+// MARK: - SKLog (簡易ロガー)
+
+private enum SKLog {
+    static func info(_ msg: String) {
+        print("ℹ️ [StoreKit] \(msg)")
+    }
+    static func warn(_ msg: String) {
+        print("⚠️ [StoreKit] \(msg)")
+    }
+    static func error(_ msg: String) {
+        print("🔴 [StoreKit] \(msg)")
     }
 }
 
