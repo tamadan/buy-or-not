@@ -144,8 +144,13 @@ struct HomeView: View {
             PaywallView()
                 .environmentObject(premiumManager)
         }
-        .sheet(isPresented: $showTextInput) {
-            TextInputSheet { input in
+        .sheet(isPresented: $showTextInput, onDismiss: {
+            navigationCoordinator.reminderProductName = nil
+        }) {
+            TextInputSheet(
+                title: navigationCoordinator.reminderProductName != nil ? "もう一度調べる？" : "商品名またはURLを入力",
+                initialText: navigationCoordinator.reminderProductName ?? ""
+            ) { input in
                 showTextInput = false
                 Task {
                     isIdentifying = true
@@ -163,6 +168,11 @@ struct HomeView: View {
                 }
             }
             .presentationDetents([.height(220)])
+        }
+        .onChange(of: navigationCoordinator.reminderProductName) { _, name in
+            guard name != nil else { return }
+            navigationCoordinator.didStopBuying = false
+            showTextInput = true
         }
         .navigationDestination(isPresented: $navigateToConfirm) {
             if let product = identifiedProduct {
@@ -298,9 +308,16 @@ private struct ActionCard: View {
 // MARK: - Text Input Sheet
 
 fileprivate struct TextInputSheet: View {
+    let title: String
     let onSubmit: (String) -> Void
-    @State private var text = ""
+    @State private var text: String
     @Environment(\.dismiss) private var dismiss
+
+    init(title: String = "商品名またはURLを入力", initialText: String = "", onSubmit: @escaping (String) -> Void) {
+        self.title = title
+        self.onSubmit = onSubmit
+        _text = State(initialValue: initialText)
+    }
 
     var body: some View {
         VStack(spacing: 20) {
@@ -309,7 +326,7 @@ fileprivate struct TextInputSheet: View {
                 .frame(width: 36, height: 4)
                 .padding(.top, 8)
 
-            Text("商品名またはURLを入力")
+            Text(title)
                 .font(.headline)
 
             VStack(spacing: 6) {

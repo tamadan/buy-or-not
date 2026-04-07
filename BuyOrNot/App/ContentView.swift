@@ -2,10 +2,11 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @StateObject private var navigationCoordinator = NavigationCoordinator()
+    @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
+    @State private var selectedTab = 0
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             NavigationStack {
                 HomeView()
             }
@@ -21,10 +22,15 @@ struct ContentView: View {
                 .tag(1)
         }
         .environmentObject(navigationCoordinator)
+        .onChange(of: navigationCoordinator.reminderProductName) { _, name in
+            // 通知タップ時に必ずホームタブに切り替える
+            if name != nil { selectedTab = 0 }
+        }
     }
 }
 
 #Preview {
     ContentView()
+        .environmentObject(NavigationCoordinator())
         .modelContainer(for: JudgementHistory.self, inMemory: true)
 }

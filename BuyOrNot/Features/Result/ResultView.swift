@@ -459,6 +459,7 @@ private struct ReminderSection: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 64)
                     .focused($isFocused)
+                    .disabled(isScheduled)
                     .onChange(of: daysText) { _, new in
                         // 数字以外を除去、3桁まで
                         let filtered = new.filter { $0.isNumber }

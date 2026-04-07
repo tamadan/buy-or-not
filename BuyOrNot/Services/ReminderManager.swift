@@ -41,9 +41,10 @@ final class ReminderManager {
         guard granted else { return false }
 
         let content = UNMutableNotificationContent()
-        content.title = "🐬 まだ欲しい？"
-        content.body = "「\(productName)」、\(days)日経ったけどまだ欲しいですか？"
+        content.title = "🐬 まだ気になってる？"
+        content.body = "「\(productName)」のこと、まだ気になってる？"
         content.sound = .default
+        content.userInfo = ["productName": productName]
 
         // N日後の朝10時を計算
         guard let triggerDate = Calendar.current.date(byAdding: .day, value: days, to: Date()) else {
