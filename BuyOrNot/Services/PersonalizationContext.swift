@@ -19,10 +19,11 @@ enum PersonalizationContext {
 
         var signals: [String] = []
 
-        // ① 同商品の再チェック
+        // ① 同商品の再チェック（isVague な曖昧マッチは誤シグナルになるため除外）
         let sameProduct = history.filter { item in
-            item.productName.lowercased().contains(product.name.lowercased()) ||
-            product.name.lowercased().contains(item.productName.lowercased())
+            !item.isVague &&
+            (item.productName.lowercased().contains(product.name.lowercased()) ||
+             product.name.lowercased().contains(item.productName.lowercased()))
         }
         if let prev = sameProduct.sorted(by: { $0.date > $1.date }).first {
             if prev.didBuy {

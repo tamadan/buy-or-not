@@ -72,6 +72,9 @@ struct HistoryView: View {
             .onChange(of: histories) { _, newHistories in
                 WidgetDataStore.update(history: newHistories, isPremium: premiumManager.isPremium)
             }
+            .onChange(of: premiumManager.isPremium) { _, isPremium in
+                WidgetDataStore.update(history: histories, isPremium: isPremium)
+            }
             .onAppear {
                 WidgetDataStore.update(history: histories, isPremium: premiumManager.isPremium)
             }

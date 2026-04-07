@@ -55,7 +55,15 @@ final class ReminderManager {
         components.minute = 0
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-        let identifier = "irukasore-reminder-\(UUID().uuidString)"
+        // 同一商品への重複リマインドを防ぐため商品名から決定論的なIDを生成する
+        let slug = productName
+            .lowercased()
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: "-")
+        let identifier = "irukasore-reminder-\(slug)"
+        // 既存の同一IDペンディング通知を削除してから再登録する
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
         do {

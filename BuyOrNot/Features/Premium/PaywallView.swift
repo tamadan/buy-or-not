@@ -47,6 +47,7 @@ struct PaywallView: View {
                             .foregroundStyle(Color(.secondaryLabel))
                             .padding(16)
                     }
+                    .accessibilityLabel("閉じる")
                 }
                 Spacer()
             }
@@ -198,8 +199,13 @@ struct PaywallView: View {
     }
 
     private func doRestore() async {
-        await premiumManager.restore()
-        if premiumManager.isPremium { dismiss() }
+        do {
+            try await premiumManager.restore()
+            if premiumManager.isPremium { dismiss() }
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
     }
 }
 

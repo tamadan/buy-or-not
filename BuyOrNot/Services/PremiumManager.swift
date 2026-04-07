@@ -32,10 +32,12 @@ final class PremiumManager: ObservableObject {
     @Published private(set) var isLoading: Bool = false
     /// プロダクト情報取得中かどうか
     @Published private(set) var isLoadingProduct: Bool = false
+    /// 起動直後の entitlement チェックが完了するまで true
+    @Published private(set) var isInitializing: Bool = true
 
     // MARK: - Private
 
-    private var transactionListenerTask: Task<Void, Error>?
+    private var transactionListenerTask: Task<Void, Never>?
 
     // MARK: - Init
 
@@ -48,8 +50,11 @@ final class PremiumManager: ObservableObject {
         // バックグラウンドでトランザクション更新を監視
         transactionListenerTask = listenForTransactions()
         Task {
-            await loadProduct()
+            // entitlement チェックを先行させて isPremium を即時確定する
             await refreshPremiumStatus()
+            isInitializing = false
+            // プロダクト情報（価格表示）は後で取得
+            await loadProduct()
         }
     }
 
@@ -65,7 +70,6 @@ final class PremiumManager: ObservableObject {
         isLoadingProduct = true
         defer {
             isLoadingProduct = false
-            // StoreKit.Product.id がプロダクトID（.productID ではない）
             let loadedID = product?.id ?? "nil"
             SKLog.info("--- loadProduct() 終了 (product.id: \(loadedID)) ---")
         }
@@ -79,7 +83,6 @@ final class PremiumManager: ObservableObject {
         SKLog.info("  SIMULATOR_RUNTIME_VERSION: \(env["SIMULATOR_RUNTIME_VERSION"] ?? "nil")")
 
         // ── 診断②: レシートURL（Sandbox か Local Testing かの判別） ──
-        // ローカルテスト時はパスに "LocalTesting" が含まれる
         SKLog.info("[診断②] レシートURL")
         let receiptURL = Bundle.main.appStoreReceiptURL
         SKLog.info("  appStoreReceiptURL: \(receiptURL?.path ?? "nil")")
@@ -110,7 +113,6 @@ final class PremiumManager: ObservableObject {
             txCount += 1
             switch result {
             case .verified(let tx):
-                // Transaction.productID は正しいプロパティ名
                 SKLog.info("  TX[\(txCount)] verified: \(tx.productID), date=\(tx.purchaseDate)")
             case .unverified(let tx, let err):
                 SKLog.warn("  TX[\(txCount)] unverified: \(tx.productID), err=\(err)")
@@ -143,7 +145,6 @@ final class PremiumManager: ObservableObject {
                 }
 
                 for p in products {
-                    // StoreKit.Product のプロダクトIDは .id（.productID ではない）
                     SKLog.info("  プロダクト: id=\(p.id), name=\(p.displayName), price=\(p.displayPrice), type=\(p.type)")
                 }
 
@@ -229,7 +230,7 @@ final class PremiumManager: ObservableObject {
     // MARK: - Restore
 
     /// 過去の購入を復元する
-    func restore() async {
+    func restore() async throws {
         SKLog.info("--- restore() 開始 ---")
         isLoading = true
         defer {
@@ -237,12 +238,8 @@ final class PremiumManager: ObservableObject {
             SKLog.info("--- restore() 終了 (isPremium: \(self.isPremium)) ---")
         }
         SKLog.info("AppStore.sync() を呼び出し中...")
-        do {
-            try await AppStore.sync()
-            SKLog.info("AppStore.sync() 完了")
-        } catch {
-            SKLog.error("AppStore.sync() エラー: \(error)")
-        }
+        try await AppStore.sync()
+        SKLog.info("AppStore.sync() 完了")
         await refreshPremiumStatus()
     }
 
@@ -270,25 +267,29 @@ final class PremiumManager: ObservableObject {
         if entitlementCount == 0 {
             SKLog.info("エンタイトルメント: 0件 (購入履歴なし)")
         }
-        isPremium = hasActive
+        // 値が変わった場合のみ WidgetDataStore を更新してリロードコストを抑える
+        if isPremium != hasActive {
+            isPremium = hasActive
+            WidgetDataStore.updatePremiumStatus(hasActive)
+        } else {
+            isPremium = hasActive
+        }
         SKLog.info("isPremium = \(isPremium)")
-        // ウィジェットにも即時反映する
-        WidgetDataStore.updatePremiumStatus(hasActive)
         SKLog.info("--- refreshPremiumStatus() 終了 ---")
     }
 
     // MARK: - Formatted Price
 
-    /// 価格を「¥250/月」形式で返す
+    /// 価格を「¥250/月」形式で返す。プロダクト未取得時は取得中プレースホルダーを返す
     var formattedPrice: String {
-        guard let p: StoreKit.Product = product else { return "¥250/月" }
+        guard let p: StoreKit.Product = product else { return "価格を取得中..." }
         return "\(p.displayPrice)/月"
     }
 
     // MARK: - Private Helpers
 
     /// トランザクション更新をリアルタイムで監視する（解約・更新など）
-    private func listenForTransactions() -> Task<Void, Error> {
+    private func listenForTransactions() -> Task<Void, Never> {
         Task.detached { [weak self] in
             SKLog.info("Transaction.updates 監視開始")
             for await result in Transaction.updates {
@@ -315,17 +316,23 @@ final class PremiumManager: ObservableObject {
     }
 }
 
-// MARK: - SKLog (簡易ロガー)
+// MARK: - SKLog (簡易ロガー・DEBUG ビルドのみ出力)
 
 private enum SKLog {
     static func info(_ msg: String) {
+        #if DEBUG
         print("ℹ️ [StoreKit] \(msg)")
+        #endif
     }
     static func warn(_ msg: String) {
+        #if DEBUG
         print("⚠️ [StoreKit] \(msg)")
+        #endif
     }
     static func error(_ msg: String) {
+        #if DEBUG
         print("🔴 [StoreKit] \(msg)")
+        #endif
     }
 }
 

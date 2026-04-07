@@ -66,8 +66,10 @@ final class AdManager: NSObject, ObservableObject {
 
     /// 広告を表示すべきか（無料枠を超えていて、かつプレミアム未加入の場合 true）
     /// 呼び出し前に ensureDailyReset() を実行すること
+    /// 起動直後の entitlement チェック完了前は誤判定を防ぐため広告を抑制する
     var shouldShowAd: Bool {
-        guard !PremiumManager.shared.isPremium else { return false }
+        let pm = PremiumManager.shared
+        guard !pm.isInitializing, !pm.isPremium else { return false }
         return todayCount >= freeJudgmentsPerDay
     }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 struct ResultView: View {
     @StateObject private var viewModel: ResultViewModel
@@ -430,6 +431,7 @@ private struct ReminderSection: View {
     @State private var isScheduling = false
     @State private var isScheduled = false
     @State private var showPermissionAlert = false
+    @State private var showScheduleErrorAlert = false
     @FocusState private var isFocused: Bool
 
     private var days: Int? {
@@ -513,6 +515,11 @@ private struct ReminderSection: View {
         } message: {
             Text("設定 → 通知 からイルカソレの通知を許可してください")
         }
+        .alert("リマインドの設定に失敗しました", isPresented: $showScheduleErrorAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("しばらく時間をおいてからもう一度お試しください")
+        }
     }
 
     private func schedule() async {
@@ -526,7 +533,13 @@ private struct ReminderSection: View {
         if success {
             withAnimation { isScheduled = true }
         } else {
-            showPermissionAlert = true
+            // 通知権限が拒否されている場合のみ設定を促す。それ以外はスケジュール失敗として通知する
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            if settings.authorizationStatus == .denied {
+                showPermissionAlert = true
+            } else {
+                showScheduleErrorAlert = true
+            }
         }
     }
 }
