@@ -48,6 +48,7 @@ struct PaywallView: View {
                             .padding(16)
                     }
                     .accessibilityLabel("閉じる")
+                    .accessibilityHint("プレミアム画面を閉じる")
                 }
                 Spacer()
             }

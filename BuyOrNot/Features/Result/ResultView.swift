@@ -108,6 +108,15 @@ struct ResultView: View {
                 isPremium: premiumManager.isPremium
             )
         }
+        .onChange(of: premiumManager.isPremium) { _, isPremium in
+            guard isPremium else { return }
+            // この画面でプレミアム購入した場合、個人化コンテキストを有効にして判定を再実行する
+            // 自己参照を防ぐため、今回保存したばかりの historyItem を除外した履歴を渡す
+            let filteredHistory = history.filter { $0 !== historyItem }
+            Task {
+                await viewModel.startLoading(history: filteredHistory, isPremium: true)
+            }
+        }
         .navigationTitle("イルカソレ")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showPaywall) {
