@@ -1,11 +1,15 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 struct ResultView: View {
     @StateObject private var viewModel: ResultViewModel
     @State private var showBuyConfirm = false
+    @State private var showPaywall = false
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
+    @EnvironmentObject private var premiumManager: PremiumManager
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \JudgementHistory.date, order: .reverse) private var history: [JudgementHistory]
     @State private var historyItem: JudgementHistory?
     let adWasShown: Bool
 
@@ -74,9 +78,23 @@ struct ResultView: View {
                         .padding(.horizontal)
                         .padding(.top, 8)
 
+                        // リマインダー（プレミアムのみ）
+                        if premiumManager.isPremium, let product = viewModel.product {
+                            ReminderSection(productName: product.name)
+                                .padding(.top, 4)
+                        }
+
                         // 「それでも買う」ボタン
                         BuyAnywayButton(showConfirm: $showBuyConfirm)
                             .padding(.top, 4)
+
+                        // プレミアムCTAバナー（広告が表示された未加入ユーザーにのみ表示）
+                        if adWasShown && !premiumManager.isPremium {
+                            PremiumCTABanner {
+                                showPaywall = true
+                            }
+                            .padding(.top, 8)
+                        }
 
                         Spacer(minLength: 40)
                     }
@@ -84,8 +102,27 @@ struct ResultView: View {
                 }
             }
         }
+        .task {
+            await viewModel.startLoading(
+                history: history,
+                isPremium: premiumManager.isPremium
+            )
+        }
+        .onChange(of: premiumManager.isPremium) { _, isPremium in
+            guard isPremium else { return }
+            // この画面でプレミアム購入した場合、個人化コンテキストを有効にして判定を再実行する
+            // 自己参照を防ぐため、今回保存したばかりの historyItem を除外した履歴を渡す
+            let filteredHistory = history.filter { $0 !== historyItem }
+            Task {
+                await viewModel.startLoading(history: filteredHistory, isPremium: true)
+            }
+        }
         .navigationTitle("イルカソレ")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .environmentObject(premiumManager)
+        }
         .sheet(isPresented: $showBuyConfirm) {
             BuyConfirmSheet(
                 product: viewModel.product,
@@ -146,12 +183,22 @@ private struct LoadingView: View {
                     .foregroundColor(Color(.secondaryLabel))
 
                 if showAdMessage {
-                    HStack(spacing: 6) {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundColor(Color(hex: "4A90D9"))
-                        Text("広告なしで調べられるのは1日1回までだよ")
-                            .font(.caption)
-                            .foregroundColor(Color(.secondaryLabel))
+                    VStack(spacing: 6) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundColor(Color(hex: "4A90D9"))
+                            Text("広告なしで調べられるのは1日1回までだよ")
+                                .font(.caption)
+                                .foregroundColor(Color(.secondaryLabel))
+                        }
+                        HStack(spacing: 6) {
+                            Image(systemName: "crown.fill")
+                                .font(.caption)
+                                .foregroundColor(Color(hex: "F5A623"))
+                            Text("プレミアムなら広告なし＋あなたをよく知るイルカになるよ")
+                                .font(.caption)
+                                .foregroundColor(Color(.secondaryLabel))
+                        }
                     }
                     .padding(.horizontal, 24)
                     .multilineTextAlignment(.center)
@@ -384,6 +431,169 @@ private struct SuggestionCard: View {
     }
 }
 
+// MARK: - Reminder Section
+
+private struct ReminderSection: View {
+    let productName: String
+
+    @State private var daysText: String = ""
+    @State private var isScheduling = false
+    @State private var isScheduled = false
+    @State private var showPermissionAlert = false
+    @State private var showScheduleErrorAlert = false
+    @FocusState private var isFocused: Bool
+
+    private var days: Int? {
+        guard let n = Int(daysText), n > 0 else { return nil }
+        return n
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+                .padding(.bottom, 12)
+
+            HStack(spacing: 8) {
+                Image(systemName: "bell.badge.fill")
+                    .foregroundColor(Color(hex: "F39C12"))
+                Text("少し時間をあけて考えてみる？")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(Color(.label))
+                Spacer()
+            }
+            .padding(.horizontal)
+
+            HStack(spacing: 8) {
+                TextField("3", text: $daysText)
+                    .keyboardType(.numberPad)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 64)
+                    .focused($isFocused)
+                    .disabled(isScheduled)
+                    .onChange(of: daysText) { _, new in
+                        // 数字以外を除去、3桁まで
+                        let filtered = new.filter { $0.isNumber }
+                        daysText = String(filtered.prefix(3))
+                    }
+
+                Text("日後")
+                    .font(.subheadline)
+                    .foregroundColor(Color(.label))
+
+                Spacer()
+
+                Button {
+                    isFocused = false
+                    Task { await schedule() }
+                } label: {
+                    Group {
+                        if isScheduling {
+                            ProgressView().tint(.white).scaleEffect(0.8)
+                        } else if isScheduled {
+                            Label("リマインド済み", systemImage: "checkmark")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        } else {
+                            Text("リマインドする")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(isScheduled ? Color(hex: "2ECC71") : Color(hex: "F39C12"))
+                    )
+                }
+                .disabled(days == nil || isScheduling || isScheduled)
+                .animation(.easeInOut(duration: 0.2), value: isScheduled)
+            }
+            .padding(.horizontal)
+            .padding(.top, 8)
+        }
+        .alert("通知が許可されていません", isPresented: $showPermissionAlert) {
+            Button("設定を開く") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("設定 → 通知 からイルカソレの通知を許可してください")
+        }
+        .alert("リマインドの設定に失敗しました", isPresented: $showScheduleErrorAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("しばらく時間をおいてからもう一度お試しください")
+        }
+    }
+
+    private func schedule() async {
+        guard let days else { return }
+        isScheduling = true
+        let success = await ReminderManager.shared.scheduleReminder(
+            for: productName,
+            afterDays: days
+        )
+        isScheduling = false
+        if success {
+            withAnimation { isScheduled = true }
+        } else {
+            // 通知権限が拒否されている場合のみ設定を促す。それ以外はスケジュール失敗として通知する
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            if settings.authorizationStatus == .denied {
+                showPermissionAlert = true
+            } else {
+                showScheduleErrorAlert = true
+            }
+        }
+    }
+}
+
+// MARK: - Premium CTA Banner
+
+private struct PremiumCTABanner: View {
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Text("👑")
+                    .font(.title3)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("もっとするどく止めてほしい？")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(Color(.label))
+                    Text("広告なし＋あなただけの判定")
+                        .font(.caption)
+                        .foregroundColor(Color(.secondaryLabel))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(hex: "F5A623").opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .strokeBorder(Color(hex: "F5A623").opacity(0.3), lineWidth: 1)
+                    )
+            )
+        }
+        .padding(.horizontal)
+    }
+}
+
 // MARK: - Buy Anyway Button
 
 private struct BuyAnywayButton: View {
@@ -581,8 +791,9 @@ private struct AffiliateLinkButton: View {
 
 #Preview {
     NavigationStack {
-        ResultView()
+        ResultView(adWasShown: true)
     }
     .environmentObject(NavigationCoordinator())
+    .environmentObject(PremiumManager.shared)
     .modelContainer(for: JudgementHistory.self, inMemory: true)
 }

@@ -17,7 +17,9 @@ struct HomeView: View {
     @State private var navigateToConfirm = false
     @State private var identifyError: String?
     @State private var stopBuyingComment: String = stopBuyingComments[0]
+    @State private var showPaywall = false
     @EnvironmentObject private var navigationCoordinator: NavigationCoordinator
+    @EnvironmentObject private var premiumManager: PremiumManager
 
     var body: some View {
         ZStack {
@@ -106,14 +108,49 @@ struct HomeView: View {
             }
         }
         .navigationBarHidden(true)
+        .safeAreaInset(edge: .top, alignment: .trailing, spacing: 0) {
+            if !premiumManager.isPremium {
+                Button {
+                    showPaywall = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "crown.fill")
+                            .font(.caption)
+                            .foregroundColor(Color(hex: "F5A623"))
+                        Text("プレミアム")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(Color(hex: "4A90D9"))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color(hex: "4A90D9").opacity(0.1))
+                    )
+                }
+                .padding(.trailing, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+            }
+        }
         .fullScreenCover(isPresented: $showCamera) {
             NavigationStack {
                 InputView()
             }
             .environmentObject(navigationCoordinator)
         }
-        .sheet(isPresented: $showTextInput) {
-            TextInputSheet { input in
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .environmentObject(premiumManager)
+        }
+        .sheet(isPresented: $showTextInput, onDismiss: {
+            navigationCoordinator.reminderProductName = nil
+        }) {
+            TextInputSheet(
+                title: navigationCoordinator.reminderProductName != nil ? "もう一度調べる？" : "商品名またはURLを入力",
+                initialText: navigationCoordinator.reminderProductName ?? ""
+            ) { input in
                 showTextInput = false
                 Task {
                     isIdentifying = true
@@ -131,6 +168,11 @@ struct HomeView: View {
                 }
             }
             .presentationDetents([.height(220)])
+        }
+        .onChange(of: navigationCoordinator.reminderProductName) { _, name in
+            guard name != nil else { return }
+            navigationCoordinator.didStopBuying = false
+            showTextInput = true
         }
         .navigationDestination(isPresented: $navigateToConfirm) {
             if let product = identifiedProduct {
@@ -266,9 +308,16 @@ private struct ActionCard: View {
 // MARK: - Text Input Sheet
 
 fileprivate struct TextInputSheet: View {
+    let title: String
     let onSubmit: (String) -> Void
-    @State private var text = ""
+    @State private var text: String
     @Environment(\.dismiss) private var dismiss
+
+    init(title: String = "商品名またはURLを入力", initialText: String = "", onSubmit: @escaping (String) -> Void) {
+        self.title = title
+        self.onSubmit = onSubmit
+        _text = State(initialValue: initialText)
+    }
 
     var body: some View {
         VStack(spacing: 20) {
@@ -277,7 +326,7 @@ fileprivate struct TextInputSheet: View {
                 .frame(width: 36, height: 4)
                 .padding(.top, 8)
 
-            Text("商品名またはURLを入力")
+            Text(title)
                 .font(.headline)
 
             VStack(spacing: 6) {
@@ -328,4 +377,5 @@ fileprivate struct TextInputSheet: View {
         HomeView()
     }
     .environmentObject(NavigationCoordinator())
+    .environmentObject(PremiumManager.shared)
 }

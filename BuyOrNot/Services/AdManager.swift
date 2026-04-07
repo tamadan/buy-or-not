@@ -64,10 +64,13 @@ final class AdManager: NSObject, ObservableObject {
         UserDefaults.standard.integer(forKey: dailyCountKey)
     }
 
-    /// 広告を表示すべきか（無料枠を超えている場合 true）
+    /// 広告を表示すべきか（無料枠を超えていて、かつプレミアム未加入の場合 true）
     /// 呼び出し前に ensureDailyReset() を実行すること
+    /// 起動直後の entitlement チェック完了前は誤判定を防ぐため広告を抑制する
     var shouldShowAd: Bool {
-        todayCount >= freeJudgmentsPerDay
+        let pm = PremiumManager.shared
+        guard !pm.isInitializing, !pm.isPremium else { return false }
+        return todayCount >= freeJudgmentsPerDay
     }
 
     /// 日付をまたいでいた場合にカウントをリセットする（副作用を明示的に管理）
