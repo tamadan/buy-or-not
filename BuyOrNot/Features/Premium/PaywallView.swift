@@ -184,6 +184,16 @@ struct PaywallView: View {
                 .foregroundColor(Color(.tertiaryLabel))
                 .multilineTextAlignment(.center)
                 .padding(.top, 4)
+
+            // 規約リンク
+            HStack(spacing: 16) {
+                Link("プライバシーポリシー", destination: URL(string: "https://tamadan.github.io/irukasore/privacy-policy/")!)
+                Text("・")
+                Link("利用規約", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
+            }
+            .font(.caption2)
+            .foregroundColor(Color(hex: "4A90D9"))
+            .padding(.top, 4)
         }
     }
 

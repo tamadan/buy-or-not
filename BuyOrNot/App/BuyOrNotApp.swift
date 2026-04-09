@@ -1,3 +1,4 @@
+import AppTrackingTransparency
 import SwiftUI
 import UserNotifications
 
@@ -14,7 +15,6 @@ struct BuyOrNotApp: App {
         _navigationCoordinator = StateObject(wrappedValue: coordinator)
         notificationDelegate = delegate
         UNUserNotificationCenter.current().delegate = delegate
-        AdManager.shared.initialize()
     }
 
     var body: some Scene {
@@ -22,6 +22,16 @@ struct BuyOrNotApp: App {
             ContentView()
                 .environmentObject(premiumManager)
                 .environmentObject(navigationCoordinator)
+                .task {
+                    // ビュー階層が確実に表示されてからATTダイアログを出すため短い遅延を挟む
+                    try? await Task.sleep(for: .milliseconds(500))
+                    await withCheckedContinuation { continuation in
+                        ATTrackingManager.requestTrackingAuthorization { _ in
+                            continuation.resume()
+                        }
+                    }
+                    AdManager.shared.initialize()
+                }
         }
         .modelContainer(for: JudgementHistory.self)
     }
